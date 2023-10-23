@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siyuan's World</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        .navbar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 20px;
+        }
+
+        .title {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            margin: 20px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div>
+    <script>
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+        }
+
+        function draw() {
+            background(mouseX, mouseY, 100, 100);
+        }
+    </script>
+
+    <div class="navbar">
+        <a href="profile.html">Profile</a> |
+        <a href="project.html">Project</a> |
+        <a href="docs.html">Docs</a>
+    </div>
+
+    <div class="title">
+        <h1>Welcome to Siyuan‘s World</h1>
+    </div>
+</div>
+
+</body>
+</html>
