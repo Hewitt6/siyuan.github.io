@@ -8,51 +8,61 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg:#0b1220; --panel:#121a2b; --muted:#9fb0d0; --text:#e8eefc; --brand:#7aa2ff; --brand-2:#5ad6c3; --accent:#ffc76b; --danger:#ff6b6b; --ok:#62d26f; --ring:0 0 0 3px rgba(122,162,255,.25); }
+    :root {
+      --bg: #fff;
+      --bg-accent: linear-gradient(180deg, rgba(255,182,193,.25), rgba(255,255,255,0));
+      --panel: #ffffff;
+      --muted: #6b7280;
+      --text: #0f172a;
+      --brand: #6b8cff;
+      --brand-2: #ffbcd1; /* blush */
+      --accent: #ff7aa2; /* rose */
+      --ring: 0 0 0 3px rgba(255,122,162,.18);
+      --line: #e5e7eb;
+    }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
       margin: 0;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji;
       color: var(--text);
-      background: radial-gradient(1200px 600px at 10% -10%, rgba(90,214,195,.15), transparent 40%),
-                  radial-gradient(1000px 500px at 100% 0%, rgba(122,162,255,.18), transparent 45%),
-                  radial-gradient(800px 400px at 30% 100%, rgba(255,199,107,.10), transparent 50%),
+      background: radial-gradient(900px 500px at 10% -10%, rgba(255,188,209,.25), transparent 40%),
+                  radial-gradient(800px 400px at 90% 0%, rgba(107,140,255,.15), transparent 45%),
                   var(--bg);
     }
     a { color: var(--brand); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-  .wrap { max-width: 1120px; margin: 48px auto; padding: 0 20px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
-  .title { display:flex; align-items:baseline; gap:12px; }
-  .title h1 { margin:0; font-size:28px; letter-spacing:.3px; font-family: 'Playfair Display', serif; background: linear-gradient(90deg, #c8d6ff, #5ad6c3 60%, #ffc76b); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .badge { font-size:12px; padding:4px 8px; border-radius:999px; color:#0b1220; background:linear-gradient(90deg, var(--brand), var(--brand-2)); font-weight:600; }
+    .wrap { max-width: 1100px; margin: 56px auto; padding: 0 22px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+    .title { display:flex; align-items:baseline; gap:12px; }
+    .title h1 { margin:0; font-size:30px; letter-spacing:.2px; font-family: 'Playfair Display', serif; background: linear-gradient(90deg, #ea4c89, #f9a8d4 40%, #6b8cff 85%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .badge { font-size:12px; padding:4px 8px; border-radius:999px; color:#ffffff; background: linear-gradient(90deg, #ff90b5, #8aa2ff); font-weight:600; }
 
-    .panel { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); box-shadow:0 10px 30px rgba(0,0,0,.35); border-radius:16px; overflow:hidden; }
+    .panel { background: #fff; border:1px solid var(--line); box-shadow: 0 10px 30px rgba(17,24,39,.06); border-radius:18px; overflow:hidden; }
 
-  .controls { display:grid; grid-template-columns: 1fr auto; gap:12px; padding:18px; background:rgba(0,0,0,.25); border-bottom:1px solid rgba(255,255,255,.06); }
+    .controls { display:grid; grid-template-columns: 1fr auto; gap:12px; padding:18px; background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.95)); border-bottom:1px solid var(--line); }
     .row { display:flex; gap:12px; flex-wrap:wrap; }
-    .input { background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 12px; outline:none; }
-    .input:focus { box-shadow: var(--ring); border-color: rgba(122,162,255,.6) }
-    .input::placeholder { color:#7f8cab; }
-  .btn { background:linear-gradient(180deg, rgba(122,162,255,.2), rgba(122,162,255,.1)); color:var(--text); border:1px solid rgba(122,162,255,.45); padding:11px 16px; border-radius:12px; cursor:pointer; font-weight:600; letter-spacing:.2px; transition:.15s ease; display:inline-flex; align-items:center; gap:8px; }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(122,162,255,.15); }
-    .btn.secondary { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); }
-    .btn.ghost { background: transparent; border-color: rgba(255,255,255,.12); }
-    .btn.success { border-color: rgba(98,210,111,.5); background: linear-gradient(180deg, rgba(98,210,111,.18), rgba(98,210,111,.08)); }
+    .input { background:#fff; color:var(--text); border:1px solid var(--line); border-radius:12px; padding:12px 14px; outline:none; }
+    .input:focus { box-shadow: var(--ring); border-color: #ffc1d5; }
+    .input::placeholder { color:#9ca3af; }
+    .btn { background: linear-gradient(180deg, #ffd5e3, #ffc1d5); color:#782141; border:1px solid #ffc1d5; padding:12px 16px; border-radius:14px; cursor:pointer; font-weight:600; letter-spacing:.2px; transition:.15s ease; display:inline-flex; align-items:center; gap:8px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(255,158,188,.25); }
+    .btn.secondary { background: #ffffff; border-color: var(--line); color:#374151; }
+    .btn.ghost { background: transparent; border-color: var(--line); color:#374151; }
+    .btn.success { background: linear-gradient(180deg, #c7ffd8, #a7f3d0); border-color: #a7f3d0; color:#065f46; }
     .hint { color: var(--muted); font-size:12px; }
 
-    .main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:16px; }
+    .main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:18px; }
     @media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
-  .card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px; backdrop-filter: blur(6px); }
-    .card h3 { margin:0 0 10px; font-size:14px; color:var(--muted); letter-spacing:.3px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius:16px; padding:16px; }
+    .card h3 { margin:0 0 10px; font-size:14px; color:#6b7280; letter-spacing:.2px; }
 
-    pre.output { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(10,16,30,.7); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); min-height: 260px; }
-    details.block { border-top:1px dashed rgba(255,255,255,.12); margin-top:10px; padding-top:10px; }
+    pre.output { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: #fafafa; padding: 12px; border-radius: 12px; border: 1px solid var(--line); min-height: 260px; }
+    details.block { border-top:1px dashed var(--line); margin-top:10px; padding-top:10px; }
     .history-list { display:grid; gap:10px; }
-    .history-item { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 8px; padding: 10px; }
-    .chip { display:inline-block; padding:2px 8px; font-size:11px; border-radius:999px; background: rgba(122,162,255,.18); border: 1px solid rgba(122,162,255,.35); margin-right:6px; }
+    .history-item { background: #fafafa; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .chip { display:inline-block; padding:2px 8px; font-size:11px; border-radius:999px; background: #ffe3ec; border: 1px solid #ffd1df; margin-right:6px; color:#7a2944; }
     .footer { color:var(--muted); font-size:12px; text-align:center; margin:18px 0; }
   </style>
 </head>
@@ -72,8 +82,9 @@
     <div class="panel">
       <div class="controls">
         <div class="row" style="flex:1">
-          <input id="apiKey" class="input" type="password" placeholder="必填：DeepSeek API Key（仅本地使用，不上传）" style="min-width:320px" />
-          <div class="hint">时间窗固定最近 12 小时 · 数据源：WallstreetCN / 金十</div>
+          <input id="apiKey" class="input" type="password" placeholder="必填：DeepSeek API Key（仅本地使用，不上传）" style="min-width:280px" />
+          <input id="proxyUrl" class="input" type="text" placeholder="可选：代理地址（例如 https://api.allorigins.win/raw?url= 或 你的 Workers 代理）" style="min-width:320px" />
+          <div class="hint">时间窗固定最近 12 小时 · 数据源：WallstreetCN / 金十 · 可用代理绕过浏览器跨域</div>
         </div>
         <div class="row">
           <button id="runBtn" class="btn"><span>🛰️</span> 抓取并生成</button>
@@ -119,7 +130,7 @@
     // ==== Utilities ====
     const $ = (sel) => document.querySelector(sel);
     const el = {
-      apiKey: $('#apiKey'), run: $('#runBtn'), output: $('#output'), copy: $('#copyBtn'), dl: $('#downloadBtn'),
+      apiKey: $('#apiKey'), proxy: $('#proxyUrl'), run: $('#runBtn'), output: $('#output'), copy: $('#copyBtn'), dl: $('#downloadBtn'),
       history: $('#historyList'), fetchHint: $('#fetchHint'), wscnCount: $('#wscnCount'), wscnJson: $('#wscnJson'), jin10Count: $('#jin10Count'), jin10Json: $('#jin10Json')
     };
 
@@ -147,9 +158,23 @@
     function inShanghai(ms) { return ms; } // Date stores UTC internally; compare absolute ms
 
     // ==== Fetchers (mirror logging_news.py) ====
+    function buildProxiedUrl(original) {
+      const p = (el.proxy.value || '').trim();
+      if (!p) return original;
+      // If contains {url} placeholder, replace
+      if (p.includes('{url}')) return p.replace('{url}', encodeURIComponent(original));
+      // AllOrigins style
+      if (p.includes('allorigins')) return p + (p.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(original) + '&cache=false';
+      // thingproxy-style pass-through
+      if (p.endsWith('/')) return p + original;
+      // default: try as query
+      return p + (p.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(original);
+    }
+
     async function fetchWSCN(limit = 200) {
       const url = `https://api-prod.wallstreetcn.com/apiv1/content/lives?channel=global-channel&client=pc&limit=${limit}`;
-      const resp = await fetch(url, { method: 'GET' });
+      const finalUrl = buildProxiedUrl(url);
+      const resp = await fetch(finalUrl, { method: 'GET' });
       if (!resp.ok) throw new Error('WSCN 返回异常: ' + resp.status);
       const j = await resp.json();
       const items = [];
@@ -197,10 +222,13 @@
     async function fetchJin10(num = 300) {
       const url = 'https://flash-api.jin10.com/get_flash_list';
       const params = new URLSearchParams({ channel: '-8200', num: String(num), max_time: formatYmdHMSInTZ(new Date(), 'Asia/Shanghai') });
-      const resp = await fetch(`${url}?${params.toString()}`, {
-        method: 'GET',
-        headers: { 'x-app-id': 'SO1EJGmNgCtmpcPF', 'x-version': '1.0.0' }
-      });
+      const original = `${url}?${params.toString()}`;
+      const finalUrl = buildProxiedUrl(original);
+      const useDirect = finalUrl === original;
+      const init = useDirect
+        ? { method: 'GET', headers: { 'x-app-id': 'SO1EJGmNgCtmpcPF', 'x-version': '1.0.0' } }
+        : { method: 'GET' }; // proxies like AllOrigins won't forward our custom headers
+      const resp = await fetch(finalUrl, init);
       if (!resp.ok) throw new Error('Jin10 返回异常: ' + resp.status);
       const j = await resp.json();
       const items = [];
