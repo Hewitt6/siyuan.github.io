@@ -34,10 +34,9 @@
     a:hover { text-decoration: underline; }
 
     .wrap { max-width: 1100px; margin: 56px auto; padding: 0 22px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+  .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
     .title { display:flex; align-items:baseline; gap:12px; }
-    .title h1 { margin:0; font-size:30px; letter-spacing:.2px; font-family: 'Playfair Display', serif; background: linear-gradient(90deg, #ea4c89, #f9a8d4 40%, #6b8cff 85%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .badge { font-size:12px; padding:4px 8px; border-radius:999px; color:#ffffff; background: linear-gradient(90deg, #ff90b5, #8aa2ff); font-weight:600; }
+  .title h1 { margin:0; font-size:30px; letter-spacing:.2px; font-family: 'Playfair Display', serif; background: linear-gradient(90deg, #ea4c89, #f9a8d4 40%, #6b8cff 85%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
     .panel { background: #fff; border:1px solid var(--line); box-shadow: 0 10px 30px rgba(17,24,39,.06); border-radius:18px; overflow:hidden; }
 
@@ -53,8 +52,7 @@
     .btn.success { background: linear-gradient(180deg, #c7ffd8, #a7f3d0); border-color: #a7f3d0; color:#065f46; }
     .hint { color: var(--muted); font-size:12px; }
 
-    .main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:18px; }
-    @media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
+  .main { display:grid; grid-template-columns: 1fr; gap:16px; padding:18px; }
     .card { background: #fff; border: 1px solid var(--line); border-radius:16px; padding:16px; }
     .card h3 { margin:0 0 10px; font-size:14px; color:#6b7280; letter-spacing:.2px; }
 
@@ -82,16 +80,36 @@
     <div class="panel">
       <div class="controls">
         <div class="row" style="flex:1">
-          <input id="apiKey" class="input" type="password" placeholder="必填：DeepSeek API Key（仅本地使用，不上传）" style="min-width:280px" />
-          <input id="proxyUrl" class="input" type="text" placeholder="可选：代理地址（例如 https://api.allorigins.win/raw?url= 或 你的 Workers 代理）" style="min-width:320px" />
-          <div class="hint">时间窗固定最近 12 小时 · 数据源：WallstreetCN / 金十 · 可用代理绕过浏览器跨域</div>
+          <input id="apiKey" class="input" type="password" placeholder="必填：DeepSeek API Key（仅本地使用，不上传）" style="min-width:260px" />
+          <input id="proxyUrl" class="input" type="text" placeholder="可选：代理地址（如 https://api.allorigins.win/raw?url= 或 你的 Workers 代理）" style="min-width:300px" />
+          <select id="hoursSelect" class="input" style="min-width:120px">
+            <option value="3">近 3 小时</option>
+            <option value="6">近 6 小时</option>
+            <option value="12" selected>近 12 小时</option>
+            <option value="24">近 24 小时</option>
+          </select>
         </div>
         <div class="row">
-          <button id="runBtn" class="btn"><span>🛰️</span> 抓取并生成</button>
+          <button id="runBtn" class="btn">抓取并生成</button>
         </div>
       </div>
 
       <div class="main">
+        <div class="card">
+          <h3>原始数据快照（最近一次抓取）</h3>
+          <div class="hint" id="fetchHint">尚未开始</div>
+          <details class="block">
+            <summary>WallstreetCN</summary>
+            <div class="hint" id="wscnCount"></div>
+            <pre id="wscnJson" class="output" style="min-height:120px"></pre>
+          </details>
+          <details class="block">
+            <summary>金十</summary>
+            <div class="hint" id="jin10Count"></div>
+            <pre id="jin10Json" class="output" style="min-height:120px"></pre>
+          </details>
+        </div>
+
         <div class="card">
           <h3>生成结果</h3>
           <pre id="output" class="output"></pre>
@@ -101,36 +119,21 @@
           </div>
 
           <details class="block">
-            <summary>临时历史（本页会话内，仅内存）</summary>
+            <summary>临时历史（仅会话内）</summary>
             <div id="historyList" class="history-list"></div>
-          </details>
-        </div>
-
-        <div class="card">
-          <h3>原始数据快照（最近一次抓取）</h3>
-          <div class="hint" id="fetchHint">尚未抓取</div>
-          <details class="block">
-            <summary>WallstreetCN（近 12 小时）</summary>
-            <div class="hint" id="wscnCount"></div>
-            <pre id="wscnJson" class="output" style="min-height:120px"></pre>
-          </details>
-          <details class="block">
-            <summary>金十（近 12 小时）</summary>
-            <div class="hint" id="jin10Count"></div>
-            <pre id="jin10Json" class="output" style="min-height:120px"></pre>
           </details>
         </div>
       </div>
     </div>
 
-    <div class="footer">静态前端直连第三方 API · 可能受 CORS 限制而部分失败 · 不做持久化存储</div>
+    
   </div>
 
   <script>
     // ==== Utilities ====
     const $ = (sel) => document.querySelector(sel);
     const el = {
-      apiKey: $('#apiKey'), proxy: $('#proxyUrl'), run: $('#runBtn'), output: $('#output'), copy: $('#copyBtn'), dl: $('#downloadBtn'),
+      apiKey: $('#apiKey'), proxy: $('#proxyUrl'), hours: $('#hoursSelect'), run: $('#runBtn'), output: $('#output'), copy: $('#copyBtn'), dl: $('#downloadBtn'),
       history: $('#historyList'), fetchHint: $('#fetchHint'), wscnCount: $('#wscnCount'), wscnJson: $('#wscnJson'), jin10Count: $('#jin10Count'), jin10Json: $('#jin10Json')
     };
 
@@ -153,8 +156,7 @@
       const get = (t) => parts.find(p=>p.type===t)?.value.padStart(2,'0');
       return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
     }
-    const HOURS_BACK = 12;
-    function cutoffTS() { return Date.now() - HOURS_BACK * 3600 * 1000; }
+  function cutoffTS() { const hb = parseInt(el.hours?.value || '12', 10); return Date.now() - hb * 3600 * 1000; }
     function inShanghai(ms) { return ms; } // Date stores UTC internally; compare absolute ms
 
     // ==== Fetchers (mirror logging_news.py) ====
@@ -245,7 +247,7 @@
     }
 
     async function deepseekSummarize(lines, apiKey) {
-      const system_msg = '你是一名财经媒体编辑。请阅读用户给出的原始快讯条目，筛选 & 精炼成一份【美国要闻简报】。\n输出要求：\n1. 顶部保留我给出的日期标题。\n2. 你自行拟 3-6 个小标题（如“美国政治动态”“金融市场”），保证涵盖：政治、政策、经济、科技（AI/量子/生物医药等前沿）、金融五大领域。\n3. 每个小标题下列出若干要点；每条 ≤40 字；信息准确、无重复。\n4. 所有内容用简体中文，不要markdown格式，要适合微信发消息的格式，标题前写上序号，每一条前用一个bullet point。';
+      const system_msg = '你是一名财经媒体编辑。请阅读用户给出的原始快讯条目，筛选 & 精炼成一份【美国要闻简报】。\n输出要求：\n1. 顶部保留我给出的日期标题。\n2. 你自行拟 3-6 个小标题（如“美国政治动态”“金融市场”），保证涵盖：政治、政策、经济、科技（AI/量子/生物医药等前沿）、金融五大领域。\n3. 每个小标题下列出若干要点；每条 ≤40 字；信息准确、无重复。\n4. 所有内容用简体中文，不要markdown格式，要适合微信发消息的格式，标题前写上序号，每一条前用一个bullet point。\n5. 严禁编造新闻，仅用提供的信息。';
       const user_msg = headerTitle() + '\n' + lines.map(b => `- ${b}`).join('\n');
       const body = { model: 'deepseek-chat', messages: [ { role: 'system', content: system_msg }, { role: 'user', content: user_msg } ] };
       const resp = await fetch('https://api.deepseek.com/chat/completions', {
@@ -294,20 +296,24 @@
       const apiKey = el.apiKey.value.trim();
       if (!apiKey) { alert('请先填写 DeepSeek API Key'); return; }
       setLoading(true);
+      const hoursStr = `${parseInt(el.hours?.value || '12', 10)} 小时`;
+      el.fetchHint.textContent = `开始 · 时间窗：${hoursStr}`;
       try {
         let wscn = { raw: null, items: [] };
         let jin10 = { raw: null, items: [] };
         // fetch both; tolerate failures like Python main()
-        try { wscn = await fetchWSCN(); } catch(e) { console.warn('[ERR] WSCN', e); }
+        try { el.fetchHint.textContent = '抓取 WSCN 中…'; wscn = await fetchWSCN(); el.fetchHint.textContent = `WSCN 抓取完成（${wscn.items.length}）· 继续抓取金十…`; } catch(e) { console.warn('[ERR] WSCN', e); el.fetchHint.textContent = 'WSCN 抓取失败，继续抓取金十…'; }
         try { jin10 = await fetchJin10(); } catch(e) { console.warn('[ERR] Jin10', e); }
         lastSnapshots = { wscn, jin10 };
         updateSnapshotsUI(wscn, jin10);
 
         const all = [...(wscn.items||[]), ...(jin10.items||[])];
+        el.fetchHint.textContent = `${el.fetchHint.textContent} · 调用 DeepSeek 生成中…`;
         const out = await deepseekSummarize(all, apiKey);
         el.output.textContent = out;
         sessionHistory.push({ time: formatCN(), output: out });
         renderHistory();
+        el.fetchHint.textContent = `${el.fetchHint.textContent.replace(/ · 调用 DeepSeek 生成中…$/, '')} · 生成完成 ✓`;
       } catch (e) {
         console.error(e);
         alert('执行失败：' + e.message + '\n若为跨域 (CORS) 限制，请改用自建后端或代理。');
