@@ -6,7 +6,7 @@
   <title>要闻简报 · Siyuan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root { --bg:#0b1220; --panel:#121a2b; --muted:#9fb0d0; --text:#e8eefc; --brand:#7aa2ff; --brand-2:#5ad6c3; --accent:#ffc76b; --danger:#ff6b6b; --ok:#62d26f; --ring:0 0 0 3px rgba(122,162,255,.25); }
     * { box-sizing: border-box; }
@@ -23,20 +23,20 @@
     a { color: var(--brand); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    .wrap { max-width: 1120px; margin: 40px auto; padding: 0 20px; }
+  .wrap { max-width: 1120px; margin: 48px auto; padding: 0 20px; }
     .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
-    .title { display:flex; align-items:baseline; gap:12px; }
-    .title h1 { margin:0; font-size:24px; letter-spacing:.3px; }
+  .title { display:flex; align-items:baseline; gap:12px; }
+  .title h1 { margin:0; font-size:28px; letter-spacing:.3px; font-family: 'Playfair Display', serif; background: linear-gradient(90deg, #c8d6ff, #5ad6c3 60%, #ffc76b); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .badge { font-size:12px; padding:4px 8px; border-radius:999px; color:#0b1220; background:linear-gradient(90deg, var(--brand), var(--brand-2)); font-weight:600; }
 
     .panel { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); box-shadow:0 10px 30px rgba(0,0,0,.35); border-radius:16px; overflow:hidden; }
 
-    .controls { display:grid; grid-template-columns: 1fr auto; gap:12px; padding:16px; background:rgba(0,0,0,.25); border-bottom:1px solid rgba(255,255,255,.06); }
+  .controls { display:grid; grid-template-columns: 1fr auto; gap:12px; padding:18px; background:rgba(0,0,0,.25); border-bottom:1px solid rgba(255,255,255,.06); }
     .row { display:flex; gap:12px; flex-wrap:wrap; }
     .input { background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 12px; outline:none; }
     .input:focus { box-shadow: var(--ring); border-color: rgba(122,162,255,.6) }
     .input::placeholder { color:#7f8cab; }
-    .btn { background:linear-gradient(180deg, rgba(122,162,255,.2), rgba(122,162,255,.1)); color:var(--text); border:1px solid rgba(122,162,255,.45); padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; transition:.15s ease; display:inline-flex; align-items:center; gap:8px; }
+  .btn { background:linear-gradient(180deg, rgba(122,162,255,.2), rgba(122,162,255,.1)); color:var(--text); border:1px solid rgba(122,162,255,.45); padding:11px 16px; border-radius:12px; cursor:pointer; font-weight:600; letter-spacing:.2px; transition:.15s ease; display:inline-flex; align-items:center; gap:8px; }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(122,162,255,.15); }
     .btn.secondary { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); }
     .btn.ghost { background: transparent; border-color: rgba(255,255,255,.12); }
@@ -45,7 +45,7 @@
 
     .main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:16px; }
     @media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
-    .card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius:12px; padding:14px; }
+  .card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px; backdrop-filter: blur(6px); }
     .card h3 { margin:0 0 10px; font-size:14px; color:var(--muted); letter-spacing:.3px; }
 
     pre.output { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(10,16,30,.7); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); min-height: 260px; }
@@ -137,7 +137,7 @@
       const day = parts.find(p=>p.type==='day').value;
       return `${y}年${m}月${day}日${period} 美国要闻简报`;
     }
-    function formatYmdHMSInTZ(date, tz='Asia/Shanghai') {
+  function formatYmdHMSInTZ(date, tz='Asia/Shanghai') {
       const parts = new Intl.DateTimeFormat('zh-CN', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).formatToParts(date);
       const get = (t) => parts.find(p=>p.type===t)?.value.padStart(2,'0');
       return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
@@ -174,6 +174,26 @@
       return { raw: j, items };
     }
 
+    // Parse Jin10 times like "YYYY-MM-DD HH:mm:ss" as Asia/Shanghai local
+    function parseJin10Shanghai(ts) {
+      if (!ts) return NaN;
+      // If ISO-like, let Date parse it
+      if (ts.includes('T') || ts.endsWith('Z')) {
+        const n = new Date(ts).getTime();
+        return isNaN(n) ? NaN : n;
+      }
+      const m = ts.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
+      if (!m) return NaN;
+      const y = parseInt(m[1], 10);
+      const mo = parseInt(m[2], 10) - 1;
+      const d = parseInt(m[3], 10);
+      const h = parseInt(m[4], 10);
+      const mi = parseInt(m[5], 10);
+      const s = parseInt(m[6] || '0', 10);
+      // Convert Shanghai local to UTC ms (UTC = local - 8h)
+      return Date.UTC(y, mo, d, h - 8, mi, s);
+    }
+
     async function fetchJin10(num = 300) {
       const url = 'https://flash-api.jin10.com/get_flash_list';
       const params = new URLSearchParams({ channel: '-8200', num: String(num), max_time: formatYmdHMSInTZ(new Date(), 'Asia/Shanghai') });
@@ -188,9 +208,9 @@
       for (const it of (j?.data || [])) {
         const tStr = it?.time || it?.created_time;
         if (!tStr) continue;
-        const tMs = new Date(tStr).getTime();
+        const tMs = parseJin10Shanghai(String(tStr));
         if (!(tMs >= cutoff)) continue;
-        const content = (it?.data?.content) || it?.title || '';
+        const content = (it?.data && typeof it.data === 'object' ? it.data.content : (it?.data || {})).content || it?.title || '';
         if (content) items.push(String(content).trim());
       }
       return { raw: j, items };
