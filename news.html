@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>要闻简报 · Siyuan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b1220; --panel:#121a2b; --muted:#9fb0d0; --text:#e8eefc; --brand:#7aa2ff; --brand-2:#5ad6c3; --accent:#ffc76b; --danger:#ff6b6b; --ok:#62d26f; --ring:0 0 0 3px rgba(122,162,255,.25); }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(90,214,195,.15), transparent 40%),
+                  radial-gradient(1000px 500px at 100% 0%, rgba(122,162,255,.18), transparent 45%),
+                  radial-gradient(800px 400px at 30% 100%, rgba(255,199,107,.10), transparent 50%),
+                  var(--bg);
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 1120px; margin: 40px auto; padding: 0 20px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+    .title { display:flex; align-items:baseline; gap:12px; }
+    .title h1 { margin:0; font-size:24px; letter-spacing:.3px; }
+    .badge { font-size:12px; padding:4px 8px; border-radius:999px; color:#0b1220; background:linear-gradient(90deg, var(--brand), var(--brand-2)); font-weight:600; }
+
+    .panel { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); box-shadow:0 10px 30px rgba(0,0,0,.35); border-radius:16px; overflow:hidden; }
+
+    .controls { display:grid; grid-template-columns: 1fr auto; gap:12px; padding:16px; background:rgba(0,0,0,.25); border-bottom:1px solid rgba(255,255,255,.06); }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .input { background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 12px; outline:none; }
+    .input:focus { box-shadow: var(--ring); border-color: rgba(122,162,255,.6) }
+    .input::placeholder { color:#7f8cab; }
+    .btn { background:linear-gradient(180deg, rgba(122,162,255,.2), rgba(122,162,255,.1)); color:var(--text); border:1px solid rgba(122,162,255,.45); padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; transition:.15s ease; display:inline-flex; align-items:center; gap:8px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(122,162,255,.15); }
+    .btn.secondary { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); }
+    .btn.ghost { background: transparent; border-color: rgba(255,255,255,.12); }
+    .btn.success { border-color: rgba(98,210,111,.5); background: linear-gradient(180deg, rgba(98,210,111,.18), rgba(98,210,111,.08)); }
+    .hint { color: var(--muted); font-size:12px; }
+
+    .main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:16px; }
+    @media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
+    .card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius:12px; padding:14px; }
+    .card h3 { margin:0 0 10px; font-size:14px; color:var(--muted); letter-spacing:.3px; }
+
+    pre.output { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(10,16,30,.7); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); min-height: 260px; }
+    details.block { border-top:1px dashed rgba(255,255,255,.12); margin-top:10px; padding-top:10px; }
+    .history-list { display:grid; gap:10px; }
+    .history-item { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 8px; padding: 10px; }
+    .chip { display:inline-block; padding:2px 8px; font-size:11px; border-radius:999px; background: rgba(122,162,255,.18); border: 1px solid rgba(122,162,255,.35); margin-right:6px; }
+    .footer { color:var(--muted); font-size:12px; text-align:center; margin:18px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">
+        <h1>美国要闻简报</h1>
+        <span class="badge">前端直连</span>
+      </div>
+      <div class="row">
+        <a class="btn ghost" href="index.html">返回首页</a>
+        <a class="btn ghost" href="profile.html">Profile</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="row" style="flex:1">
+          <input id="apiKey" class="input" type="password" placeholder="必填：DeepSeek API Key（仅本地使用，不上传）" style="min-width:320px" />
+          <div class="hint">时间窗固定最近 12 小时 · 数据源：WallstreetCN / 金十</div>
+        </div>
+        <div class="row">
+          <button id="runBtn" class="btn"><span>🛰️</span> 抓取并生成</button>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="card">
+          <h3>生成结果</h3>
+          <pre id="output" class="output"></pre>
+          <div class="row" style="margin-top:8px; justify-content:flex-end">
+            <button id="copyBtn" class="btn success">复制摘要</button>
+            <button id="downloadBtn" class="btn secondary">下载 .txt</button>
+          </div>
+
+          <details class="block">
+            <summary>临时历史（本页会话内，仅内存）</summary>
+            <div id="historyList" class="history-list"></div>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>原始数据快照（最近一次抓取）</h3>
+          <div class="hint" id="fetchHint">尚未抓取</div>
+          <details class="block">
+            <summary>WallstreetCN（近 12 小时）</summary>
+            <div class="hint" id="wscnCount"></div>
+            <pre id="wscnJson" class="output" style="min-height:120px"></pre>
+          </details>
+          <details class="block">
+            <summary>金十（近 12 小时）</summary>
+            <div class="hint" id="jin10Count"></div>
+            <pre id="jin10Json" class="output" style="min-height:120px"></pre>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">静态前端直连第三方 API · 可能受 CORS 限制而部分失败 · 不做持久化存储</div>
+  </div>
+
+  <script>
+    // ==== Utilities ====
+    const $ = (sel) => document.querySelector(sel);
+    const el = {
+      apiKey: $('#apiKey'), run: $('#runBtn'), output: $('#output'), copy: $('#copyBtn'), dl: $('#downloadBtn'),
+      history: $('#historyList'), fetchHint: $('#fetchHint'), wscnCount: $('#wscnCount'), wscnJson: $('#wscnJson'), jin10Count: $('#jin10Count'), jin10Json: $('#jin10Json')
+    };
+
+    function formatCN(d = new Date()) {
+      return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}).format(d);
+    }
+    function headerTitle() {
+      const d = new Date();
+      const hour = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', hour12: false }).formatToParts(d).find(p=>p.type==='hour')?.value || '00';
+      const h = parseInt(hour, 10);
+      const period = h < 11 ? '晨' : h < 18 ? '午' : '晚';
+      const parts = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year:'numeric', month:'numeric', day:'numeric' }).formatToParts(d);
+      const y = parts.find(p=>p.type==='year').value;
+      const m = parts.find(p=>p.type==='month').value;
+      const day = parts.find(p=>p.type==='day').value;
+      return `${y}年${m}月${day}日${period} 美国要闻简报`;
+    }
+    function formatYmdHMSInTZ(date, tz='Asia/Shanghai') {
+      const parts = new Intl.DateTimeFormat('zh-CN', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).formatToParts(date);
+      const get = (t) => parts.find(p=>p.type===t)?.value.padStart(2,'0');
+      return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+    }
+    const HOURS_BACK = 12;
+    function cutoffTS() { return Date.now() - HOURS_BACK * 3600 * 1000; }
+    function inShanghai(ms) { return ms; } // Date stores UTC internally; compare absolute ms
+
+    // ==== Fetchers (mirror logging_news.py) ====
+    async function fetchWSCN(limit = 200) {
+      const url = `https://api-prod.wallstreetcn.com/apiv1/content/lives?channel=global-channel&client=pc&limit=${limit}`;
+      const resp = await fetch(url, { method: 'GET' });
+      if (!resp.ok) throw new Error('WSCN 返回异常: ' + resp.status);
+      const j = await resp.json();
+      const items = [];
+      const cutoff = cutoffTS();
+      for (const it of (j?.data?.items || [])) {
+        const tRaw = it.display_time;
+        let tMs;
+        if (typeof tRaw === 'number') {
+          // seconds -> ms
+          tMs = tRaw * 1000;
+        } else if (typeof tRaw === 'string') {
+          const t = new Date(tRaw);
+          tMs = t.getTime();
+        } else {
+          continue;
+        }
+        if (inShanghai(tMs) >= cutoff) {
+          const content = (it.content_text || '').trim();
+          if (content) items.push(content);
+        }
+      }
+      return { raw: j, items };
+    }
+
+    async function fetchJin10(num = 300) {
+      const url = 'https://flash-api.jin10.com/get_flash_list';
+      const params = new URLSearchParams({ channel: '-8200', num: String(num), max_time: formatYmdHMSInTZ(new Date(), 'Asia/Shanghai') });
+      const resp = await fetch(`${url}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'x-app-id': 'SO1EJGmNgCtmpcPF', 'x-version': '1.0.0' }
+      });
+      if (!resp.ok) throw new Error('Jin10 返回异常: ' + resp.status);
+      const j = await resp.json();
+      const items = [];
+      const cutoff = cutoffTS();
+      for (const it of (j?.data || [])) {
+        const tStr = it?.time || it?.created_time;
+        if (!tStr) continue;
+        const tMs = new Date(tStr).getTime();
+        if (!(tMs >= cutoff)) continue;
+        const content = (it?.data?.content) || it?.title || '';
+        if (content) items.push(String(content).trim());
+      }
+      return { raw: j, items };
+    }
+
+    async function deepseekSummarize(lines, apiKey) {
+      const system_msg = '你是一名财经媒体编辑。请阅读用户给出的原始快讯条目，筛选 & 精炼成一份【美国要闻简报】。\n输出要求：\n1. 顶部保留我给出的日期标题。\n2. 你自行拟 3-6 个小标题（如“美国政治动态”“金融市场”），保证涵盖：政治、政策、经济、科技（AI/量子/生物医药等前沿）、金融五大领域。\n3. 每个小标题下列出若干要点；每条 ≤40 字；信息准确、无重复。\n4. 所有内容用简体中文，不要markdown格式，要适合微信发消息的格式，标题前写上序号，每一条前用一个bullet point。';
+      const user_msg = headerTitle() + '\n' + lines.map(b => `- ${b}`).join('\n');
+      const body = { model: 'deepseek-chat', messages: [ { role: 'system', content: system_msg }, { role: 'user', content: user_msg } ] };
+      const resp = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error('DeepSeek API 调用失败：' + resp.status);
+      const j = await resp.json();
+      return j?.choices?.[0]?.message?.content || '';
+    }
+
+    // ==== UI state ====
+    const sessionHistory = []; // {time, output}
+    let lastSnapshots = { wscn: null, jin10: null }; // raw json
+
+    function setLoading(loading) {
+      el.run.disabled = loading;
+      el.run.textContent = loading ? '处理中…' : '抓取并生成';
+    }
+    function renderHistory() {
+      el.history.innerHTML = '';
+      sessionHistory.slice().reverse().forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        const meta = document.createElement('div');
+        meta.className = 'hint';
+        meta.innerHTML = `<span class="chip">DeepSeek</span> ${item.time}`;
+        const pre = document.createElement('pre');
+        pre.className = 'output';
+        pre.textContent = item.output;
+        div.appendChild(meta); div.appendChild(pre);
+        el.history.appendChild(div);
+      });
+    }
+    function updateSnapshotsUI(wscn, jin10) {
+      const wCount = (wscn?.items || []).length; const jCount = (jin10?.items || []).length;
+      el.fetchHint.textContent = `抓取完成 · WSCN: ${wCount} 条 · 金十: ${jCount} 条 · 时间：${formatCN()}`;
+      el.wscnCount.textContent = `条目数：${wCount}`;
+      el.jin10Count.textContent = `条目数：${jCount}`;
+      el.wscnJson.textContent = JSON.stringify(wscn?.raw || {}, null, 2);
+      el.jin10Json.textContent = JSON.stringify(jin10?.raw || {}, null, 2);
+    }
+
+    async function run() {
+      const apiKey = el.apiKey.value.trim();
+      if (!apiKey) { alert('请先填写 DeepSeek API Key'); return; }
+      setLoading(true);
+      try {
+        let wscn = { raw: null, items: [] };
+        let jin10 = { raw: null, items: [] };
+        // fetch both; tolerate failures like Python main()
+        try { wscn = await fetchWSCN(); } catch(e) { console.warn('[ERR] WSCN', e); }
+        try { jin10 = await fetchJin10(); } catch(e) { console.warn('[ERR] Jin10', e); }
+        lastSnapshots = { wscn, jin10 };
+        updateSnapshotsUI(wscn, jin10);
+
+        const all = [...(wscn.items||[]), ...(jin10.items||[])];
+        const out = await deepseekSummarize(all, apiKey);
+        el.output.textContent = out;
+        sessionHistory.push({ time: formatCN(), output: out });
+        renderHistory();
+      } catch (e) {
+        console.error(e);
+        alert('执行失败：' + e.message + '\n若为跨域 (CORS) 限制，请改用自建后端或代理。');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function copyOutput() {
+      const txt = el.output.textContent || '';
+      if (!txt.trim()) return;
+      navigator.clipboard.writeText(txt).then(() => {
+        el.copy.textContent = '已复制 ✓';
+        setTimeout(()=> el.copy.textContent = '复制摘要', 1200);
+      });
+    }
+    function downloadOutput() {
+      const txt = el.output.textContent || '';
+      if (!txt.trim()) return;
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `要闻简报_${Date.now()}.txt`;
+      a.click(); URL.revokeObjectURL(url);
+    }
+
+    el.run.addEventListener('click', run);
+    el.copy.addEventListener('click', copyOutput);
+    el.dl.addEventListener('click', downloadOutput);
+  </script>
+</body>
+</html>
