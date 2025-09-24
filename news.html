@@ -243,8 +243,18 @@
         if (!tStr) continue;
         const tMs = parseJin10Shanghai(String(tStr));
         if (!(tMs >= cutoff)) continue;
-        const content = (it?.data && typeof it.data === 'object' ? it.data.content : (it?.data || {})).content || it?.title || '';
-        if (content) items.push(String(content).trim());
+        // Robustly extract content from Jin10 items
+        let content = '';
+        if (it?.data && typeof it.data === 'object' && typeof it.data.content !== 'undefined') {
+          content = String(it.data.content || '').trim();
+        } else if (typeof it?.data === 'string') {
+          content = it.data.trim();
+        } else if (typeof it?.content === 'string') {
+          content = it.content.trim();
+        } else if (typeof it?.title === 'string') {
+          content = it.title.trim();
+        }
+        if (content) items.push(content);
       }
       return { raw: j, items };
     }
