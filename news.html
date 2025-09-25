@@ -205,83 +205,79 @@
       return { raw: j, items };
     }
 
-    // Parse Jin10 times like "YYYY-MM-DD HH:mm:ss" as Asia/Shanghai local
-    function parseJin10Shanghai(ts) {
-      if (!ts) return NaN;
-      // If ISO-like, let Date parse it
-      if (ts.includes('T') || ts.endsWith('Z')) {
-        const n = new Date(ts).getTime();
-        return isNaN(n) ? NaN : n;
-      }
-      const m = ts.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
-      if (!m) return NaN;
-      const y = parseInt(m[1], 10);
-      const mo = parseInt(m[2], 10) - 1;
-      const d = parseInt(m[3], 10);
-      const h = parseInt(m[4], 10);
-      const mi = parseInt(m[5], 10);
-      const s = parseInt(m[6] || '0', 10);
-      // Convert Shanghai local to UTC ms (UTC = local - 8h)
-      return Date.UTC(y, mo, d, h - 8, mi, s);
-    }
-
-    async function fetchJin10(num = 300) {
-      const url = 'https://flash-api.jin10.com/get_flash_list';
-      const params = new URLSearchParams({ channel: '-8200', num: String(num), max_time: formatYmdHMSInTZ(new Date(), 'Asia/Shanghai') });
-      const original = `${url}?${params.toString()}`;
-      const finalUrl = buildProxiedUrl(original);
-      const useDirect = finalUrl === original;
-      const init = useDirect
-        ? { method: 'GET', headers: { 'x-app-id': 'SO1EJGmNgCtmpcPF', 'x-version': '1.0.0' } }
-        : { method: 'GET' }; // proxies like AllOrigins won't forward our custom headers
-      const resp = await fetch(finalUrl, init);
-      if (!resp.ok) throw new Error('Jin10 返回异常: ' + resp.status);
-      const j = await resp.json();
-      // Transform into minimal objects: { isImportant, content }
-      const cutoff = cutoffTS();
-      const important = [];
-      const normal = [];
-      for (const it of (j?.data || [])) {
-        const tStr = it?.time || it?.created_time;
-        if (!tStr) continue;
-        const tMs = parseJin10Shanghai(String(tStr));
-        if (!(tMs >= cutoff)) continue;
-        let content = '';
-        // VIP / locked content may have vip_title / lock
-        if (it?.data && typeof it.data === 'object') {
-          if (typeof it.data.content === 'string' && it.data.content.trim()) {
-            content = it.data.content.trim();
-          } else if (typeof it.data.vip_title === 'string' && it.data.vip_title.trim()) {
-            content = it.data.vip_title.trim();
-          } else if (typeof it.data.title === 'string' && it.data.title.trim()) {
-            content = it.data.title.trim();
+    // ===== Jin10 新方案：直接抓取 https://www.jin10.com/ 页面并用 DOM 提取 =====
+    // 注意：若未配置可用的代理（支持绕过 CORS 并返回完整 HTML），直接在浏览器请求可能拿不到内容（opaque/no-cors）。
+    // 用户可在“代理地址”里填写自己的反向代理，例如： https://api.allorigins.win/raw?url=
+    function extractJin10FromDocument(doc) {
+      const newsItems = [];
+      const flashContainers = doc.querySelectorAll('#jin_flash_list .jin-flash-item-container');
+      flashContainers.forEach(container => {
+        const item = {};
+        const timeElement = container.querySelector('.item-time');
+        item.time = timeElement ? timeElement.textContent.trim() : '';
+        const flashItem = container.querySelector('.jin-flash-item');
+        if (!flashItem) return;
+        item.isImportant = flashItem.classList.contains('is-important');
+        item.isRili = flashItem.classList.contains('rili');
+        item.isArticle = flashItem.classList.contains('article');
+        item.isVip = flashItem.classList.contains('is-vip');
+        if (item.isRili) {
+          const titleElement = container.querySelector('.mid-title');
+          const dataElements = container.querySelectorAll('.num-item span');
+            item.title = titleElement ? titleElement.textContent.trim() : '数据发布';
+            item.data = {
+              previous: dataElements[0] ? dataElements[0].textContent.trim() : '',
+              expected: dataElements[1] ? dataElements[1].textContent.trim() : '',
+              actual: dataElements[2] ? dataElements[2].textContent.trim() : ''
+            };
+            item.content = `${item.title} - 前值: ${item.data.previous}, 预期: ${item.data.expected}, 公布: ${item.data.actual}`;
+        } else if (item.isVip) {
+          const flashTextElement = container.querySelector('.flash-text');
+          item.content = flashTextElement ? flashTextElement.textContent.trim() : 'VIP内容，需要解锁';
+          item.title = item.content;
+        } else {
+          const flashTextElement = container.querySelector('.flash-text');
+          if (flashTextElement) {
+            item.content = flashTextElement.innerHTML.trim();
+            item.title = flashTextElement.textContent.trim();
           }
-        } else if (typeof it?.content === 'string') {
-          content = it.content.trim();
-        } else if (typeof it?.title === 'string') {
-          content = it.title.trim();
+          if (item.isArticle) {
+            const articleTitleElement = container.querySelector('.right-content_title span:last-child');
+            if (articleTitleElement) item.title = articleTitleElement.textContent.trim();
+          }
         }
-        if (!content) continue;
-        const rec = { isImportant: it?.important === 1, content };
-        if (rec.isImportant) important.push(rec); else normal.push(rec);
-      }
-      // Keep all important, cap non-important at 100 (spec)
-      const combined = important.concat(normal.slice(0, 100));
-      return { raw: j, items: combined };
+        item.relevance = container.getAttribute('data-relevance') || '';
+        item.link = null;
+        const detailBtn = container.querySelector('.detail-btn a');
+        if (detailBtn) item.link = detailBtn.href; else if (item.isArticle) {
+          const articleLink = container.querySelector('.flash-item-share a[target="_blank"]');
+          if (articleLink) item.link = articleLink.href;
+        }
+        if (item.content) newsItems.push(item);
+      });
+      return newsItems;
     }
 
-    async function deepseekSummarize(lines, apiKey) {
-      const system_msg = '你是一名财经媒体编辑。请阅读用户给出的原始快讯条目，筛选 & 精炼成一份【美国要闻简报】。\n输出要求：\n1. 顶部保留我给出的日期标题。\n2. 你自行拟 3-6 个小标题（如“美国政治动态”“金融市场”），保证涵盖：政治、政策、经济、科技（AI/量子/生物医药等前沿）、金融五大领域。\n3. 每个小标题下列出若干要点；每条 ≤40 字；信息准确、无重复。\n4. 所有内容用简体中文，不要markdown格式，要适合微信发消息的格式，标题前写上序号，每一条前用一个bullet point。\n5. 严禁编造新闻，仅用提供的信息。';
-      // Each line may be: string or {isImportant, content}
-      const serialized = lines.map(b => {
-        if (typeof b === 'string') return `- ${b}`;
-        if (b && typeof b === 'object') {
-          // Provide JSON so模型可识别重要性, 仅两字段
-          return `- ${JSON.stringify({ important: !!b.isImportant, content: b.content })}`;
-        }
-        return '- ' + String(b || '');
+    async function fetchJin10Scrape() {
+      const pageUrl = 'https://www.jin10.com/';
+      const finalUrl = buildProxiedUrl(pageUrl);
+      const resp = await fetch(finalUrl, { method: 'GET' });
+      if (!resp.ok) throw new Error('Jin10 页面获取失败: ' + resp.status);
+      const html = await resp.text();
+      // 解析 HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const extracted = extractJin10FromDocument(doc);
+      return { raw: { count: extracted.length }, items: extracted };
+    }
+
+    async function deepseekSummarize(items, apiKey) {
+      // items: [{content, isImportant}]
+      const system_msg = '你是一名财经媒体编辑。请阅读用户给出的原始快讯条目（含是否标记为重要），筛选 & 精炼成一份【美国要闻简报】。\n输出要求：\n1. 顶部保留我给出的日期标题。\n2. 你自行拟 3-6 个小标题（如“美国政治动态”“金融市场”），保证涵盖：政治、政策、经济、科技（AI/量子/生物医药等前沿）、金融五大领域。\n3. 尽量优先利用被标记为重要的条目。\n4. 每个小标题下列出若干要点；每条 ≤40 字；信息准确、无重复。\n5. 所有内容用简体中文，不要markdown格式，要适合微信发消息的格式，标题前写上序号，每一条前用一个bullet point。\n6. 严禁编造新闻，仅用提供的信息。';
+      const user_msg = headerTitle() + '\n' + items.map(obj => {
+        const tag = obj.isImportant ? '[重要]' : '';
+        return `- ${tag}${obj.content.replace(/\n+/g,' ').trim()}`;
       }).join('\n');
-      const user_msg = headerTitle() + '\n' + serialized;
       const body = { model: 'deepseek-chat', logprobs: true, top_logprobs: 20, messages: [ { role: 'system', content: system_msg }, { role: 'user', content: user_msg } ] };
       const resp = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -375,13 +371,19 @@
         let jin10 = { raw: null, items: [] };
         // fetch both; tolerate failures like Python main()
         try { el.fetchHint.textContent = '抓取 WSCN 中…'; wscn = await fetchWSCN(); el.fetchHint.textContent = `WSCN 抓取完成（${wscn.items.length}）· 继续抓取金十…`; } catch(e) { console.warn('[ERR] WSCN', e); el.fetchHint.textContent = 'WSCN 抓取失败，继续抓取金十…'; }
-        try { jin10 = await fetchJin10(); } catch(e) { console.warn('[ERR] Jin10', e); }
+    try { jin10 = await fetchJin10Scrape(); } catch(e) { console.warn('[ERR] Jin10', e); }
         lastSnapshots = { wscn, jin10 };
         updateSnapshotsUI(wscn, jin10);
 
-  const all = [...(wscn.items||[]), ...(jin10.items||[])]; // mixed: strings + {isImportant, content}
-        el.fetchHint.textContent = `${el.fetchHint.textContent} · 调用 DeepSeek 生成中…`;
-  const out = await deepseekSummarize(all, apiKey);
+    // 将 WSCN 字符串包装为统一结构
+    const wscnObjs = (wscn.items || []).map(c => ({ content: c, isImportant: false }));
+    const jin10List = (jin10.items || []); // 已经是对象
+    // 重要优先 & 限制非重要最多 100 条
+    const imp = jin10List.filter(i => i.isImportant);
+    const nonImp = jin10List.filter(i => !i.isImportant).slice(0, 100);
+    const combined = [...imp, ...nonImp, ...wscnObjs];
+    el.fetchHint.textContent = `${el.fetchHint.textContent} · 调用 DeepSeek 生成中…`;
+  const out = await deepseekSummarize(combined, apiKey);
   // Render token-level CCP coloring
   el.output.innerHTML = tokensToHTML(out.tokens);
   colorizeCCP();
