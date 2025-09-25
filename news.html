@@ -65,7 +65,8 @@
   .tok { padding:0 2px; border-radius:4px; }
   .tok[data-risk="high"] { background:linear-gradient(145deg,#ff5f5f,#ff9b9b); color:#111; }
   .tok[data-risk="mid"] { background:linear-gradient(145deg,#ffd37a,#ffe7b0); color:#111; }
-  .tok[data-risk="ok"] { background:#eef2ff; }
+  /* ok 不加背景，保持原始视觉 */
+  .tok[data-risk="ok"] { background:transparent; }
   .tok-tooltip { position:fixed; z-index:9999; background:rgba(17,24,39,.92); backdrop-filter:blur(8px); color:#f8fafc; font-size:12px; line-height:1.45; padding:10px 12px 12px; border-radius:14px; box-shadow:0 12px 32px -4px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.06); max-width:300px; pointer-events:none; opacity:0; transform:translateY(-6px) scale(.98); transition:.16s cubic-bezier(.4,.2,.2,1); border:1px solid rgba(255,255,255,.08); }
   .tok-tooltip.visible { opacity:1; transform:translateY(0) scale(1); }
   .tok-tooltip h4 { margin:0 0 6px; font-size:12px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
@@ -134,12 +135,13 @@
 
         <div class="card">
           <h3>生成结果</h3>
-          <pre id="output" class="output"></pre>
-          <div class="risk-legend" id="riskLegend" style="display:none">
+          <div class="risk-legend" id="riskLegend" style="display:none; margin-top:0;">
+            <span style="font-weight:600; color:#374151;">置信标注说明：</span>
             <span><i class="risk-dot dot-high"></i>高风险 (CCP < 0.15)</span>
             <span><i class="risk-dot dot-mid"></i>存疑 (0.15 ≤ CCP < 0.30)</span>
             <span><i class="risk-dot dot-ok"></i>可信 (≥ 0.30)</span>
           </div>
+          <pre id="output" class="output"></pre>
           <div class="row" style="margin-top:8px; justify-content:flex-end">
             <button id="copyBtn" class="btn success">复制摘要</button>
             <button id="downloadBtn" class="btn secondary">下载 .txt</button>
@@ -354,22 +356,26 @@
       if (!denom) denom = pMain || 1e-12;
       return numer / denom;
     }
-    function tokensToHTML(tokens) {
+    function tokensToHTML(tokens, plainFallback) {
+      if (!Array.isArray(tokens) || !tokens.length) return (plainFallback || '').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      const esc = (s='')=> s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
       return tokens.map(t => {
+        const tokenText = t.token ?? '';
         const ccp = ccpOne(t);
         const alts = (t.top_logprobs || [])
           .filter(x => x.token !== t.token)
           .sort((a,b) => (b.logprob||0) - (a.logprob||0));
         const a1 = alts[0]?.token || '';
         const a2 = alts[1]?.token || '';
-  const a1p = alts[0] ? Math.exp(alts[0].logprob||0) : 0;
-  const a2p = alts[1] ? Math.exp(alts[1].logprob||0) : 0;
+        const a1p = alts[0] ? Math.exp(alts[0].logprob||0) : 0;
+        const a2p = alts[1] ? Math.exp(alts[1].logprob||0) : 0;
         let risk = 'ok';
-        let title;
-        if (ccp < THRESH_HI) { risk = 'high'; title = `高风险 | CCP=${ccp.toFixed(3)} | 备选: ${a1}${a2?(' | '+a2):''}`; }
-        else if (ccp < THRESH_LO) { risk = 'mid'; title = `存疑 | CCP=${ccp.toFixed(3)}${a1?(' | 备选: '+a1):''}`; }
-        else { title = `CCP=${ccp.toFixed(3)}`; }
-  return `<span class="tok" data-risk="${risk}" data-alt1="${a1.replace(/"/g,'&quot;')}" data-alt2="${a2.replace(/"/g,'&quot;')}" data-alt1p="${a1p.toFixed(4)}" data-alt2p="${a2p.toFixed(4)}" data-ccp="${ccp.toFixed(3)}" title="${title.replace(/"/g,'&quot;')}">${t.token}</span>`;
+        if (ccp < THRESH_HI) risk = 'high'; else if (ccp < THRESH_LO) risk = 'mid';
+        if (risk === 'ok') return esc(tokenText); // 不包装，保持原始连续文本
+        const title = risk === 'high'
+          ? `高风险 | CCP=${ccp.toFixed(3)}`
+          : `存疑 | CCP=${ccp.toFixed(3)}`;
+        return `<span class="tok" data-risk="${risk}" data-alt1="${esc(a1)}" data-alt2="${esc(a2)}" data-alt1p="${a1p.toFixed(4)}" data-alt2p="${a2p.toFixed(4)}" data-ccp="${ccp.toFixed(3)}" title="${esc(title)}">${esc(tokenText)}</span>`;
       }).join('');
     }
     // Tooltip logic (desktop hover, mobile tap)
@@ -449,13 +455,7 @@
         window.addEventListener('scroll', () => hideTokTooltip(), { passive:true });
       }
     }
-    function colorizeCCP() {
-      document.querySelectorAll('.tok').forEach(node => {
-        const v = parseFloat(node.dataset.ccp);
-        if (v < THRESH_HI) node.style.background = '#ff9b9b';
-        else if (v < THRESH_LO) node.style.background = '#ffd88a';
-      });
-    }
+  // colorizeCCP 已不再需要，样式由 CSS 控制，仅高/中风险有背景
 
     // ==== UI state ====
     const sessionHistory = []; // {time, output}
@@ -514,12 +514,11 @@
     el.fetchHint.textContent = `${el.fetchHint.textContent} · 调用 DeepSeek 生成中…`;
   const out = await deepseekSummarize(combined, apiKey);
   // Render token-level CCP coloring
-  el.output.innerHTML = tokensToHTML(out.tokens);
-  colorizeCCP();
-  initTokenTooltips();
-  // 显示风险图例
+  el.output.innerHTML = tokensToHTML(out.tokens, out.text);
+  // 确保 legend 在内容前可见
   const legend = document.getElementById('riskLegend');
   if (legend) legend.style.display = 'flex';
+  initTokenTooltips();
   sessionHistory.push({ time: formatCN(), output: out.text });
         renderHistory();
         el.fetchHint.textContent = `${el.fetchHint.textContent.replace(/ · 调用 DeepSeek 生成中…$/, '')} · 生成完成 ✓`;
