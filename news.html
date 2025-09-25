@@ -63,6 +63,8 @@
     .chip { display:inline-block; padding:2px 8px; font-size:11px; border-radius:999px; background: #ffe3ec; border: 1px solid #ffd1df; margin-right:6px; color:#7a2944; }
     .footer { color:var(--muted); font-size:12px; text-align:center; margin:18px 0; }
   .tok { padding:0 2px; border-radius:4px; }
+  .tok-tooltip { position:fixed; z-index:9999; background:#111827; color:#fff; font-size:12px; line-height:1.4; padding:6px 8px; border-radius:6px; box-shadow:0 4px 18px rgba(0,0,0,.25); max-width:240px; pointer-events:none; opacity:0; transform:translateY(-4px); transition:.12s ease; }
+  .tok-tooltip.visible { opacity:1; transform:translateY(0); }
 
     /* Mobile adjustments */
     @media (max-width: 720px) {
@@ -261,10 +263,27 @@
     async function fetchJin10Scrape() {
       const pageUrl = 'https://www.jin10.com/';
       const finalUrl = buildProxiedUrl(pageUrl);
-      const resp = await fetch(finalUrl, { method: 'GET' });
-      if (!resp.ok) throw new Error('Jin10 页面获取失败: ' + resp.status);
-      const html = await resp.text();
-      // 解析 HTML
+      let html;
+      try {
+        const resp = await fetch(finalUrl, { method: 'GET' });
+        if (!resp.ok) throw new Error('Jin10 页面获取失败: ' + resp.status);
+        html = await resp.text();
+      } catch (e) {
+        // 如果用户未配置 proxy，自动尝试 AllOrigins 作为兜底
+        if (!(el.proxy.value || '').trim()) {
+          el.fetchHint.textContent = '直接抓取金十失败，尝试公共代理…';
+          try {
+            const fallback = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(pageUrl) + '&cache=false';
+            const r2 = await fetch(fallback);
+            if (!r2.ok) throw new Error('AllOrigins 失败: ' + r2.status);
+            html = await r2.text();
+          } catch (inner) {
+            throw new Error('金十抓取失败（可能被 CORS 限制）。请在“代理地址”输入你的 Cloudflare Workers / 反向代理，例如 https://your-worker.workers.dev/?url= 或 https://api.allorigins.win/raw?url=' );
+          }
+        } else {
+          throw e;
+        }
+      }
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const extracted = extractJin10FromDocument(doc);
@@ -316,9 +335,82 @@
     function tokensToHTML(tokens) {
       return tokens.map(t => {
         const ccp = ccpOne(t);
-        const span = `<span class="tok" data-ccp="${ccp.toFixed(2)}" title="CCP=${ccp.toFixed(3)}">${t.token}</span>`;
-        return span;
+        const alts = (t.top_logprobs || [])
+          .filter(x => x.token !== t.token)
+          .sort((a,b) => (b.logprob||0) - (a.logprob||0));
+        const a1 = alts[0]?.token || '';
+        const a2 = alts[1]?.token || '';
+        let risk = 'ok';
+        let title;
+        if (ccp < THRESH_HI) { risk = 'high'; title = `高风险 | CCP=${ccp.toFixed(3)} | 备选: ${a1}${a2?(' | '+a2):''}`; }
+        else if (ccp < THRESH_LO) { risk = 'mid'; title = `存疑 | CCP=${ccp.toFixed(3)}${a1?(' | 备选: '+a1):''}`; }
+        else { title = `CCP=${ccp.toFixed(3)}`; }
+        return `<span class="tok" data-risk="${risk}" data-alt1="${a1.replace(/"/g,'&quot;')}" data-alt2="${a2.replace(/"/g,'&quot;')}" data-ccp="${ccp.toFixed(2)}" title="${title.replace(/"/g,'&quot;')}">${t.token}</span>`;
       }).join('');
+    }
+    // Tooltip logic (desktop hover, mobile tap)
+    let _tokTooltipEl = null; let _activeTok = null;
+    function ensureTokTooltip() {
+      if (!_tokTooltipEl) {
+        _tokTooltipEl = document.createElement('div');
+        _tokTooltipEl.className = 'tok-tooltip';
+        document.body.appendChild(_tokTooltipEl);
+      }
+      return _tokTooltipEl;
+    }
+    function hideTokTooltip() {
+      if (_tokTooltipEl) { _tokTooltipEl.classList.remove('visible'); _tokTooltipEl.style.left='-9999px'; }
+      _activeTok = null;
+    }
+    function showTokTooltip(node) {
+      if (!node) return;
+      const risk = node.dataset.risk;
+      if (risk === 'ok') { hideTokTooltip(); return; }
+      const alt1 = node.dataset.alt1;
+      const alt2 = node.dataset.alt2;
+      const ccp = node.dataset.ccp;
+      const elTip = ensureTokTooltip();
+      let html = '';
+      if (risk === 'high') {
+        html = `<strong style="color:#fca5a5">高风险</strong><br>CCP=${ccp}<br>候选1：${alt1 || '(无)'}<br>候选2：${alt2 || '(无)'}`;
+      } else if (risk === 'mid') {
+        html = `<strong style="color:#fbbf24">存疑</strong><br>CCP=${ccp}<br>候选：${alt1 || '(无)'}`;
+      }
+      elTip.innerHTML = html;
+      const rect = node.getBoundingClientRect();
+      const top = rect.top + window.scrollY - 8; // try above first
+      const left = rect.left + window.scrollX;
+      elTip.style.top = (top - elTip.offsetHeight > window.scrollY ? top - elTip.offsetHeight - 6 : rect.bottom + window.scrollY + 6) + 'px';
+      elTip.style.left = left + 'px';
+      requestAnimationFrame(()=> elTip.classList.add('visible'));
+      _activeTok = node;
+    }
+    function initTokenTooltips() {
+      hideTokTooltip();
+      const isTouch = matchMedia('(hover: none)').matches || 'ontouchstart' in window;
+      document.querySelectorAll('.tok').forEach(tok => {
+        tok.removeEventListener('mouseenter', tok._enterHandler || (()=>{}));
+        tok.removeEventListener('mouseleave', tok._leaveHandler || (()=>{}));
+        tok.removeEventListener('click', tok._clickHandler || (()=>{}));
+        if (isTouch) {
+          tok._clickHandler = (e) => {
+            e.stopPropagation();
+            if (_activeTok === tok) { hideTokTooltip(); return; }
+            showTokTooltip(tok);
+          };
+          tok.addEventListener('click', tok._clickHandler);
+        } else {
+          tok._enterHandler = () => showTokTooltip(tok);
+          tok._leaveHandler = () => { if (_activeTok === tok) hideTokTooltip(); };
+          tok.addEventListener('mouseenter', tok._enterHandler);
+          tok.addEventListener('mouseleave', tok._leaveHandler);
+        }
+      });
+      if (!window._tokOutsideClickBound) {
+        window._tokOutsideClickBound = true;
+        document.addEventListener('click', () => hideTokTooltip());
+        window.addEventListener('scroll', () => hideTokTooltip(), { passive:true });
+      }
     }
     function colorizeCCP() {
       document.querySelectorAll('.tok').forEach(node => {
@@ -387,6 +479,7 @@
   // Render token-level CCP coloring
   el.output.innerHTML = tokensToHTML(out.tokens);
   colorizeCCP();
+  initTokenTooltips();
   sessionHistory.push({ time: formatCN(), output: out.text });
         renderHistory();
         el.fetchHint.textContent = `${el.fetchHint.textContent.replace(/ · 调用 DeepSeek 生成中…$/, '')} · 生成完成 ✓`;
