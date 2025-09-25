@@ -413,19 +413,53 @@
         ${altRows.length?`<div class="alts">${altRows.join('')}</div>`:'<div style="margin-top:6px;opacity:.6;font-size:11px">无高概率替代候选</div>'}
       `;
       const rect = node.getBoundingClientRect();
-      // 先放到视口中间获取高度
-      elTip.style.top = (rect.top + window.scrollY) + 'px';
-      elTip.style.left = (rect.left + window.scrollX) + 'px';
-      // 计算放置位置（优先上方，其次下方，溢出则向内收）
-      const desiredTop = rect.top + window.scrollY - elTip.offsetHeight - 10;
-      const finalTop = desiredTop > window.scrollY + 8 ? desiredTop : rect.bottom + window.scrollY + 10;
-      let left = rect.left + window.scrollX - 6;
-      const maxLeft = window.scrollX + document.documentElement.clientWidth - elTip.offsetWidth - 8;
+      const isTouch = matchMedia('(hover: none)').matches || 'ontouchstart' in window;
+      // 准备测量：隐藏但渲染
+      elTip.style.visibility = 'hidden';
+      elTip.style.display = 'block';
+      elTip.classList.remove('visible');
+      // 视口尺寸
+      const vw = window.innerWidth; const vh = window.innerHeight;
+      const scrollY = window.scrollY; const scrollX = window.scrollX;
+      const tipW = elTip.offsetWidth; const tipH = elTip.offsetHeight;
+      // 默认尝试上方
+      let top = rect.top + scrollY - tipH - 12;
+      let place = 'above';
+      if (top < scrollY + 8) { // 不够位置放上方，尝试下方
+        top = rect.bottom + scrollY + 12;
+        place = 'below';
+      }
+      // 下方仍溢出 => 居中（移动端更友好）
+      if (top + tipH > scrollY + vh - 8) {
+        top = scrollY + Math.max( (vh - tipH)/2, 8 );
+        place = 'center';
+      }
+      // 水平居中对齐 token
+      let left = rect.left + scrollX + (rect.width - tipW)/2;
+      if (left < scrollX + 8) left = scrollX + 8;
+      const maxLeft = scrollX + vw - tipW - 8;
       if (left > maxLeft) left = maxLeft;
-      if (left < window.scrollX + 4) left = window.scrollX + 4;
-      elTip.style.top = finalTop + 'px';
-      elTip.style.left = left + 'px';
-      requestAnimationFrame(()=> elTip.classList.add('visible'));
+      // 触屏：若依旧高度大或 place 为 center，改为 bottom sheet 风格
+      if (isTouch && (place === 'center' || tipH > vh * 0.5)) {
+        elTip.classList.add('mobile');
+        elTip.style.left = (scrollX + 12) + 'px';
+        elTip.style.right = (scrollX + 12) + 'px';
+        elTip.style.width = 'auto';
+        elTip.style.maxWidth = 'calc(100vw - 24px)';
+        // 靠近底部但留出安全区
+        top = scrollY + vh - tipH - 24;
+        if (top < scrollY + 12) top = scrollY + 12;
+      } else {
+        elTip.classList.remove('mobile');
+        elTip.style.right = 'auto';
+        elTip.style.width = '';
+        elTip.style.maxWidth = '300px';
+        elTip.style.left = left + 'px';
+      }
+      elTip.style.top = top + 'px';
+      // 显示
+      elTip.style.visibility = 'visible';
+      requestAnimationFrame(()=> { elTip.classList.add('visible'); });
       _activeTok = node;
     }
     function initTokenTooltips() {
