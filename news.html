@@ -237,32 +237,51 @@
       const resp = await fetch(finalUrl, init);
       if (!resp.ok) throw new Error('Jin10 返回异常: ' + resp.status);
       const j = await resp.json();
-      const items = [];
+      // Transform into minimal objects: { isImportant, content }
       const cutoff = cutoffTS();
+      const important = [];
+      const normal = [];
       for (const it of (j?.data || [])) {
         const tStr = it?.time || it?.created_time;
         if (!tStr) continue;
         const tMs = parseJin10Shanghai(String(tStr));
         if (!(tMs >= cutoff)) continue;
-        // Robustly extract content from Jin10 items
         let content = '';
-        if (it?.data && typeof it.data === 'object' && typeof it.data.content !== 'undefined') {
-          content = String(it.data.content || '').trim();
-        } else if (typeof it?.data === 'string') {
-          content = it.data.trim();
+        // VIP / locked content may have vip_title / lock
+        if (it?.data && typeof it.data === 'object') {
+          if (typeof it.data.content === 'string' && it.data.content.trim()) {
+            content = it.data.content.trim();
+          } else if (typeof it.data.vip_title === 'string' && it.data.vip_title.trim()) {
+            content = it.data.vip_title.trim();
+          } else if (typeof it.data.title === 'string' && it.data.title.trim()) {
+            content = it.data.title.trim();
+          }
         } else if (typeof it?.content === 'string') {
           content = it.content.trim();
         } else if (typeof it?.title === 'string') {
           content = it.title.trim();
         }
-        if (content) items.push(content);
+        if (!content) continue;
+        const rec = { isImportant: it?.important === 1, content };
+        if (rec.isImportant) important.push(rec); else normal.push(rec);
       }
-      return { raw: j, items };
+      // Keep all important, cap non-important at 100 (spec)
+      const combined = important.concat(normal.slice(0, 100));
+      return { raw: j, items: combined };
     }
 
     async function deepseekSummarize(lines, apiKey) {
       const system_msg = '你是一名财经媒体编辑。请阅读用户给出的原始快讯条目，筛选 & 精炼成一份【美国要闻简报】。\n输出要求：\n1. 顶部保留我给出的日期标题。\n2. 你自行拟 3-6 个小标题（如“美国政治动态”“金融市场”），保证涵盖：政治、政策、经济、科技（AI/量子/生物医药等前沿）、金融五大领域。\n3. 每个小标题下列出若干要点；每条 ≤40 字；信息准确、无重复。\n4. 所有内容用简体中文，不要markdown格式，要适合微信发消息的格式，标题前写上序号，每一条前用一个bullet point。\n5. 严禁编造新闻，仅用提供的信息。';
-      const user_msg = headerTitle() + '\n' + lines.map(b => `- ${b}`).join('\n');
+      // Each line may be: string or {isImportant, content}
+      const serialized = lines.map(b => {
+        if (typeof b === 'string') return `- ${b}`;
+        if (b && typeof b === 'object') {
+          // Provide JSON so模型可识别重要性, 仅两字段
+          return `- ${JSON.stringify({ important: !!b.isImportant, content: b.content })}`;
+        }
+        return '- ' + String(b || '');
+      }).join('\n');
+      const user_msg = headerTitle() + '\n' + serialized;
       const body = { model: 'deepseek-chat', logprobs: true, top_logprobs: 20, messages: [ { role: 'system', content: system_msg }, { role: 'user', content: user_msg } ] };
       const resp = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -360,7 +379,7 @@
         lastSnapshots = { wscn, jin10 };
         updateSnapshotsUI(wscn, jin10);
 
-        const all = [...(wscn.items||[]), ...(jin10.items||[])];
+  const all = [...(wscn.items||[]), ...(jin10.items||[])]; // mixed: strings + {isImportant, content}
         el.fetchHint.textContent = `${el.fetchHint.textContent} · 调用 DeepSeek 生成中…`;
   const out = await deepseekSummarize(all, apiKey);
   // Render token-level CCP coloring
