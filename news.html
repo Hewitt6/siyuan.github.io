@@ -63,7 +63,23 @@
     .chip { display:inline-block; padding:2px 8px; font-size:11px; border-radius:999px; background: #ffe3ec; border: 1px solid #ffd1df; margin-right:6px; color:#7a2944; }
     .footer { color:var(--muted); font-size:12px; text-align:center; margin:18px 0; }
   .tok { padding:0 2px; border-radius:4px; }
-  .tok-tooltip { position:fixed; z-index:9999; background:#111827; color:#fff; font-size:12px; line-height:1.4; padding:6px 8px; border-radius:6px; box-shadow:0 4px 18px rgba(0,0,0,.25); max-width:240px; pointer-events:none; opacity:0; transform:translateY(-4px); transition:.12s ease; }
+  .tok[data-risk="high"] { background:linear-gradient(145deg,#ff5f5f,#ff9b9b); color:#111; }
+  .tok[data-risk="mid"] { background:linear-gradient(145deg,#ffd37a,#ffe7b0); color:#111; }
+  .tok[data-risk="ok"] { background:#eef2ff; }
+  .tok-tooltip { position:fixed; z-index:9999; background:rgba(17,24,39,.92); backdrop-filter:blur(8px); color:#f8fafc; font-size:12px; line-height:1.45; padding:10px 12px 12px; border-radius:14px; box-shadow:0 12px 32px -4px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.06); max-width:300px; pointer-events:none; opacity:0; transform:translateY(-6px) scale(.98); transition:.16s cubic-bezier(.4,.2,.2,1); border:1px solid rgba(255,255,255,.08); }
+  .tok-tooltip.visible { opacity:1; transform:translateY(0) scale(1); }
+  .tok-tooltip h4 { margin:0 0 6px; font-size:12px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
+  .tok-tooltip .badge { display:inline-block; padding:2px 6px; border-radius:6px; font-size:10px; font-weight:600; letter-spacing:.5px; }
+  .tok-tooltip .badge.high { background:#ff7171; color:#3b0b0b; }
+  .tok-tooltip .badge.mid { background:#ffd37a; color:#4a3000; }
+  .tok-tooltip .alts { display:grid; gap:4px; margin-top:4px; }
+  .tok-tooltip .alt-item { background:rgba(255,255,255,.06); padding:4px 6px; border-radius:6px; display:flex; justify-content:space-between; font-family:ui-monospace,monospace; }
+  .risk-legend { margin:10px 0 4px; display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:#6b7280; }
+  .risk-legend span { display:inline-flex; align-items:center; gap:4px; }
+  .risk-dot { width:14px; height:14px; border-radius:6px; display:inline-block; }
+  .risk-dot.dot-high { background:linear-gradient(145deg,#ff5f5f,#ff9b9b); }
+  .risk-dot.dot-mid { background:linear-gradient(145deg,#ffd37a,#ffe7b0); }
+  .risk-dot.dot-ok { background:#eef2ff; border:1px solid #c7d2fe; }
   .tok-tooltip.visible { opacity:1; transform:translateY(0); }
 
     /* Mobile adjustments */
@@ -119,6 +135,11 @@
         <div class="card">
           <h3>生成结果</h3>
           <pre id="output" class="output"></pre>
+          <div class="risk-legend" id="riskLegend" style="display:none">
+            <span><i class="risk-dot dot-high"></i>高风险 (CCP < 0.15)</span>
+            <span><i class="risk-dot dot-mid"></i>存疑 (0.15 ≤ CCP < 0.30)</span>
+            <span><i class="risk-dot dot-ok"></i>可信 (≥ 0.30)</span>
+          </div>
           <div class="row" style="margin-top:8px; justify-content:flex-end">
             <button id="copyBtn" class="btn success">复制摘要</button>
             <button id="downloadBtn" class="btn secondary">下载 .txt</button>
@@ -287,7 +308,8 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const extracted = extractJin10FromDocument(doc);
-      return { raw: { count: extracted.length }, items: extracted };
+  // 提供前 20 条样本，便于在 UI 里查看解析是否正确
+  return { raw: { count: extracted.length, sample: extracted.slice(0,20) }, items: extracted };
     }
 
     async function deepseekSummarize(items, apiKey) {
@@ -340,12 +362,14 @@
           .sort((a,b) => (b.logprob||0) - (a.logprob||0));
         const a1 = alts[0]?.token || '';
         const a2 = alts[1]?.token || '';
+  const a1p = alts[0] ? Math.exp(alts[0].logprob||0) : 0;
+  const a2p = alts[1] ? Math.exp(alts[1].logprob||0) : 0;
         let risk = 'ok';
         let title;
         if (ccp < THRESH_HI) { risk = 'high'; title = `高风险 | CCP=${ccp.toFixed(3)} | 备选: ${a1}${a2?(' | '+a2):''}`; }
         else if (ccp < THRESH_LO) { risk = 'mid'; title = `存疑 | CCP=${ccp.toFixed(3)}${a1?(' | 备选: '+a1):''}`; }
         else { title = `CCP=${ccp.toFixed(3)}`; }
-        return `<span class="tok" data-risk="${risk}" data-alt1="${a1.replace(/"/g,'&quot;')}" data-alt2="${a2.replace(/"/g,'&quot;')}" data-ccp="${ccp.toFixed(2)}" title="${title.replace(/"/g,'&quot;')}">${t.token}</span>`;
+  return `<span class="tok" data-risk="${risk}" data-alt1="${a1.replace(/"/g,'&quot;')}" data-alt2="${a2.replace(/"/g,'&quot;')}" data-alt1p="${a1p.toFixed(4)}" data-alt2p="${a2p.toFixed(4)}" data-ccp="${ccp.toFixed(3)}" title="${title.replace(/"/g,'&quot;')}">${t.token}</span>`;
       }).join('');
     }
     // Tooltip logic (desktop hover, mobile tap)
@@ -365,22 +389,35 @@
     function showTokTooltip(node) {
       if (!node) return;
       const risk = node.dataset.risk;
-      if (risk === 'ok') { hideTokTooltip(); return; }
       const alt1 = node.dataset.alt1;
       const alt2 = node.dataset.alt2;
+      const alt1p = parseFloat(node.dataset.alt1p || '0');
+      const alt2p = parseFloat(node.dataset.alt2p || '0');
       const ccp = node.dataset.ccp;
       const elTip = ensureTokTooltip();
-      let html = '';
-      if (risk === 'high') {
-        html = `<strong style="color:#fca5a5">高风险</strong><br>CCP=${ccp}<br>候选1：${alt1 || '(无)'}<br>候选2：${alt2 || '(无)'}`;
-      } else if (risk === 'mid') {
-        html = `<strong style="color:#fbbf24">存疑</strong><br>CCP=${ccp}<br>候选：${alt1 || '(无)'}`;
-      }
-      elTip.innerHTML = html;
+      let label = risk === 'high' ? '高风险' : risk === 'mid' ? '存疑' : '可信';
+      let badgeClass = risk === 'high' ? 'high' : risk === 'mid' ? 'mid' : 'ok';
+      const fmtPct = (p)=> p ? (p*100).toFixed(1)+'%' : '';
+      const altRows = [];
+      if (alt1) altRows.push(`<div class="alt-item"><span>${alt1}</span><span>${fmtPct(alt1p)}</span></div>`);
+      if (alt2) altRows.push(`<div class="alt-item"><span>${alt2}</span><span>${fmtPct(alt2p)}</span></div>`);
+      elTip.innerHTML = `
+        <h4>${label}<span class="badge ${badgeClass}">CCP ${ccp}</span></h4>
+        <div style="font-size:11px;opacity:.85">CCP 越低表示该 token 在相同类型候选中被模型选择的置信度越低。</div>
+        ${altRows.length?`<div class="alts">${altRows.join('')}</div>`:'<div style="margin-top:6px;opacity:.6;font-size:11px">无高概率替代候选</div>'}
+      `;
       const rect = node.getBoundingClientRect();
-      const top = rect.top + window.scrollY - 8; // try above first
-      const left = rect.left + window.scrollX;
-      elTip.style.top = (top - elTip.offsetHeight > window.scrollY ? top - elTip.offsetHeight - 6 : rect.bottom + window.scrollY + 6) + 'px';
+      // 先放到视口中间获取高度
+      elTip.style.top = (rect.top + window.scrollY) + 'px';
+      elTip.style.left = (rect.left + window.scrollX) + 'px';
+      // 计算放置位置（优先上方，其次下方，溢出则向内收）
+      const desiredTop = rect.top + window.scrollY - elTip.offsetHeight - 10;
+      const finalTop = desiredTop > window.scrollY + 8 ? desiredTop : rect.bottom + window.scrollY + 10;
+      let left = rect.left + window.scrollX - 6;
+      const maxLeft = window.scrollX + document.documentElement.clientWidth - elTip.offsetWidth - 8;
+      if (left > maxLeft) left = maxLeft;
+      if (left < window.scrollX + 4) left = window.scrollX + 4;
+      elTip.style.top = finalTop + 'px';
       elTip.style.left = left + 'px';
       requestAnimationFrame(()=> elTip.classList.add('visible'));
       _activeTok = node;
@@ -480,6 +517,9 @@
   el.output.innerHTML = tokensToHTML(out.tokens);
   colorizeCCP();
   initTokenTooltips();
+  // 显示风险图例
+  const legend = document.getElementById('riskLegend');
+  if (legend) legend.style.display = 'flex';
   sessionHistory.push({ time: formatCN(), output: out.text });
         renderHistory();
         el.fetchHint.textContent = `${el.fetchHint.textContent.replace(/ · 调用 DeepSeek 生成中…$/, '')} · 生成完成 ✓`;
