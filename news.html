@@ -82,6 +82,19 @@
   .risk-dot.dot-mid { background:linear-gradient(145deg,#ffd37a,#ffe7b0); }
   .risk-dot.dot-ok { background:#eef2ff; border:1px solid #c7d2fe; }
   .tok-tooltip.visible { opacity:1; transform:translateY(0); }
+  /* Mobile overlay */
+  .tok-mobile-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.52); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:9998; animation:fadeIn .18s ease; }
+  .tok-mobile-panel { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.96); width: min(440px,90vw); max-height:70vh; overflow:auto; background:linear-gradient(145deg,#1f2937,#111827); color:#f1f5f9; border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:18px 18px 20px; box-shadow:0 18px 42px -8px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.05); z-index:9999; opacity:0; animation:panelIn .22s cubic-bezier(.4,.2,.2,1) forwards; }
+  .tok-mobile-panel h4 { margin:0 0 10px; font-size:13px; letter-spacing:.5px; display:flex; align-items:center; gap:8px; }
+  .tok-mobile-panel .badge { padding:3px 8px; border-radius:8px; font-size:11px; font-weight:600; }
+  .tok-mobile-panel .badge.high { background:#ff7171; color:#3b0b0b; }
+  .tok-mobile-panel .badge.mid { background:#ffd37a; color:#4a3000; }
+  .tok-mobile-panel .meta { font-size:11px; opacity:.82; line-height:1.5; }
+  .tok-mobile-panel .alts { margin-top:10px; display:grid; gap:6px; }
+  .tok-mobile-panel .alt-item { background:rgba(255,255,255,.07); padding:6px 8px; border-radius:8px; display:flex; justify-content:space-between; font-family:ui-monospace,monospace; font-size:12px; }
+  .tok-mobile-close { position:absolute; top:8px; right:10px; background:rgba(255,255,255,.08); border:none; color:#f1f5f9; padding:4px 8px; border-radius:8px; font-size:12px; cursor:pointer; }
+  @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+  @keyframes panelIn { to { opacity:1; transform:translate(-50%,-50%) scale(1);} }
 
     /* Mobile adjustments */
     @media (max-width: 720px) {
@@ -412,52 +425,50 @@
         <div style="font-size:11px;opacity:.85">CCP 越低表示该 token 在相同类型候选中被模型选择的置信度越低。</div>
         ${altRows.length?`<div class="alts">${altRows.join('')}</div>`:'<div style="margin-top:6px;opacity:.6;font-size:11px">无高概率替代候选</div>'}
       `;
-      const rect = node.getBoundingClientRect();
       const isTouch = matchMedia('(hover: none)').matches || 'ontouchstart' in window;
-      // 准备测量：隐藏但渲染
+      if (isTouch) {
+        // 使用中央浮层方式
+        if (document.querySelector('.tok-mobile-backdrop')) {
+          document.querySelector('.tok-mobile-backdrop').remove();
+        }
+        const backdrop = document.createElement('div');
+        backdrop.className = 'tok-mobile-backdrop';
+        const panel = document.createElement('div');
+        panel.className = 'tok-mobile-panel';
+        const altRows = [];
+        if (alt1) altRows.push(`<div class="alt-item"><span>${alt1}</span><span>${(alt1p*100).toFixed(1)}%</span></div>`);
+        if (alt2) altRows.push(`<div class="alt-item"><span>${alt2}</span><span>${(alt2p*100).toFixed(1)}%</span></div>`);
+        panel.innerHTML = `
+          <button class="tok-mobile-close" aria-label="关闭">关闭</button>
+          <h4>${label}<span class="badge ${badgeClass}">CCP ${ccp}</span></h4>
+          <div class="meta">CCP 越低表示该 token 在同类候选中被模型选中的相对置信度越低。</div>
+          ${altRows.length ? `<div class="alts">${altRows.join('')}</div>` : '<div style="margin-top:8px;opacity:.6;font-size:11px">无高概率替代候选</div>'}
+        `;
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+        const close = () => { backdrop.remove(); _activeTok = null; };
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+        panel.querySelector('.tok-mobile-close').addEventListener('click', close);
+        _activeTok = node;
+        return;
+      }
+      // 桌面仍用 tooltip 模式
+      const rect = node.getBoundingClientRect();
       elTip.style.visibility = 'hidden';
       elTip.style.display = 'block';
       elTip.classList.remove('visible');
-      // 视口尺寸
-      const vw = window.innerWidth; const vh = window.innerHeight;
       const scrollY = window.scrollY; const scrollX = window.scrollX;
+      const vw = window.innerWidth; const vh = window.innerHeight;
       const tipW = elTip.offsetWidth; const tipH = elTip.offsetHeight;
-      // 默认尝试上方
-      let top = rect.top + scrollY - tipH - 12;
-      let place = 'above';
-      if (top < scrollY + 8) { // 不够位置放上方，尝试下方
-        top = rect.bottom + scrollY + 12;
-        place = 'below';
-      }
-      // 下方仍溢出 => 居中（移动端更友好）
-      if (top + tipH > scrollY + vh - 8) {
-        top = scrollY + Math.max( (vh - tipH)/2, 8 );
-        place = 'center';
-      }
-      // 水平居中对齐 token
+      let top = rect.top + scrollY - tipH - 10;
+      if (top < scrollY + 4) top = rect.bottom + scrollY + 10;
+      if (top + tipH > scrollY + vh - 4) top = scrollY + vh - tipH - 10;
       let left = rect.left + scrollX + (rect.width - tipW)/2;
-      if (left < scrollX + 8) left = scrollX + 8;
-      const maxLeft = scrollX + vw - tipW - 8;
+      if (left < scrollX + 4) left = scrollX + 4;
+      const maxLeft = scrollX + vw - tipW - 4;
       if (left > maxLeft) left = maxLeft;
-      // 触屏：若依旧高度大或 place 为 center，改为 bottom sheet 风格
-      if (isTouch && (place === 'center' || tipH > vh * 0.5)) {
-        elTip.classList.add('mobile');
-        elTip.style.left = (scrollX + 12) + 'px';
-        elTip.style.right = (scrollX + 12) + 'px';
-        elTip.style.width = 'auto';
-        elTip.style.maxWidth = 'calc(100vw - 24px)';
-        // 靠近底部但留出安全区
-        top = scrollY + vh - tipH - 24;
-        if (top < scrollY + 12) top = scrollY + 12;
-      } else {
-        elTip.classList.remove('mobile');
-        elTip.style.right = 'auto';
-        elTip.style.width = '';
-        elTip.style.maxWidth = '300px';
-        elTip.style.left = left + 'px';
-      }
       elTip.style.top = top + 'px';
-      // 显示
+      elTip.style.left = left + 'px';
       elTip.style.visibility = 'visible';
       requestAnimationFrame(()=> { elTip.classList.add('visible'); });
       _activeTok = node;
