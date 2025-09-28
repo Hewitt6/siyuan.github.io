@@ -573,6 +573,12 @@
   sessionHistory.push({ time: formatCN(), output: out.text });
         renderHistory();
         el.fetchHint.textContent = `${el.fetchHint.textContent.replace(/ · 调用 DeepSeek 生成中…$/, '')} · 生成完成 ✓`;
+        // Trigger finish animation
+        animationActive = true;
+        state = 'finish';
+        stateTimer = 0;
+        updateTargets();
+        animate();
       } catch (e) {
         console.error(e);
         alert('执行失败：' + e.message + '\n若为跨域 (CORS) 限制，请改用自建后端或代理。');
@@ -624,9 +630,26 @@
     canvas.width = canvasSize;
     canvas.height = canvasSize;
     const particles = [];
-    let state = 'scatter'; // 'scatter', 'disappear', 'gather'
+    let state = 'scatter'; // 'scatter', 'disappear', 'gather', 'finish'
     let stateTimer = 0;
-    const stateDurations = { scatter: 3000, disappear: 1000, gather: 3000 };
+    const stateDurations = { scatter: 3000, disappear: 1000, gather: 3000, finish: 3000 };
+    let animationActive = false;
+
+    // Finish text points (simple approximation)
+    const finishPoints = [
+      // F
+      {x: 20, y: 20}, {x: 20, y: 30}, {x: 20, y: 40}, {x: 20, y: 50}, {x: 30, y: 20}, {x: 40, y: 20},
+      // I
+      {x: 60, y: 20}, {x: 60, y: 30}, {x: 60, y: 40}, {x: 60, y: 50},
+      // N
+      {x: 80, y: 20}, {x: 80, y: 30}, {x: 80, y: 40}, {x: 80, y: 50}, {x: 90, y: 20}, {x: 100, y: 50},
+      // I
+      {x: 120, y: 20}, {x: 120, y: 30}, {x: 120, y: 40}, {x: 120, y: 50},
+      // S
+      {x: 140, y: 20}, {x: 150, y: 20}, {x: 140, y: 30}, {x: 140, y: 50}, {x: 150, y: 50},
+      // H
+      {x: 170, y: 20}, {x: 170, y: 30}, {x: 170, y: 40}, {x: 170, y: 50}, {x: 180, y: 30}, {x: 190, y: 20}, {x: 190, y: 30}, {x: 190, y: 40}, {x: 190, y: 50}
+    ];
 
     // Heart shape function
     function heartX(t) { return 16 * Math.pow(Math.sin(t), 3) * scale; }
@@ -664,18 +687,33 @@
       } else if (state === 'disappear') {
         // Instantly disappear
         particles.forEach(p => p.alpha = 0);
+      } else if (state === 'finish') {
+        // Assign targets to "FINISH" text
+        for (let i = 0; i < numParticles; i++) {
+          const pt = finishPoints[i % finishPoints.length];
+          particles[i].targetX = pt.x;
+          particles[i].targetY = pt.y;
+          particles[i].alpha = 1;
+        }
       }
     }
 
     function animate() {
+      if (!animationActive && state !== 'scatter') return; // only animate if active or in scatter loop
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Update state
       stateTimer += 16; // ~60fps
       if (stateTimer > stateDurations[state]) {
-        if (state === 'scatter') state = 'disappear';
-        else if (state === 'disappear') state = 'gather';
-        else if (state === 'gather') state = 'scatter';
+        if (state === 'finish') state = 'gather';
+        else if (state === 'gather') state = 'disappear';
+        else if (state === 'disappear') {
+          if (animationActive) {
+            animationActive = false;
+          } else {
+            state = 'scatter';
+          }
+        } else if (state === 'scatter') state = 'disappear';
         stateTimer = 0;
         updateTargets();
       }
@@ -697,7 +735,7 @@
             p.x += p.vx;
             p.y += p.vy;
           }
-        } else {
+        } else if (state === 'scatter' || state === 'finish') {
           const dx = p.targetX - p.x;
           const dy = p.targetY - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -710,12 +748,18 @@
             p.y += p.vy;
           }
         }
+        // Draw
+        ctx.fillStyle = `rgba(255, 122, 162, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
 
       requestAnimationFrame(animate);
     }
 
     updateTargets();
-    animate();
+    // animate(); // remove to not show by default
   </script>
 </body>
 </html>
