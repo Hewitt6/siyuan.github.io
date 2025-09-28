@@ -104,7 +104,7 @@
       .controls .row:last-child .btn { width: 100%; justify-content: center; }
     }
 
-    #heartCanvas { position: fixed; top: 5px; right: 10px; pointer-events: none; z-index: 1000; }
+    #heartCanvas { position: fixed; top: 0px; right: 10px; pointer-events: none; z-index: 1000; }
     @media (max-width: 720px) {
       #heartCanvas { width: 100px; height: 100px; }
     }
@@ -624,9 +624,9 @@
     canvas.width = canvasSize;
     canvas.height = canvasSize;
     const particles = [];
-    let state = 'scatter'; // 'scatter' or 'gather'
+    let state = 'scatter'; // 'scatter', 'disappear', 'gather'
     let stateTimer = 0;
-    const stateDuration = 3000; // 3 seconds per state
+    const stateDurations = { scatter: 3000, disappear: 1000, gather: 3000 };
 
     // Heart shape function
     function heartX(t) { return 16 * Math.pow(Math.sin(t), 3) * scale; }
@@ -640,7 +640,8 @@
         targetX: Math.random() * canvas.width,
         targetY: Math.random() * canvas.height,
         vx: 0,
-        vy: 0
+        vy: 0,
+        alpha: 1
       });
     }
 
@@ -651,8 +652,9 @@
           const t = (i / numParticles) * 2 * Math.PI;
           particles[i].targetX = canvas.width / 2 + heartX(t);
           particles[i].targetY = canvas.height / 2 - heartY(t);
+          particles[i].alpha = 1; // reset alpha
         }
-      } else {
+      } else if (state === 'scatter') {
         // Scatter targets in a smaller area
         const scatterRange = isMobile ? 40 : 80;
         for (let i = 0; i < numParticles; i++) {
@@ -667,27 +669,33 @@
 
       // Update state
       stateTimer += 16; // ~60fps
-      if (stateTimer > stateDuration) {
-        state = state === 'scatter' ? 'gather' : 'scatter';
+      if (stateTimer > stateDurations[state]) {
+        if (state === 'scatter') state = 'disappear';
+        else if (state === 'disappear') state = 'gather';
+        else if (state === 'gather') state = 'scatter';
         stateTimer = 0;
         updateTargets();
       }
 
       // Update particles
       particles.forEach(p => {
-        const dx = p.targetX - p.x;
-        const dy = p.targetY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 1) {
-          p.vx += dx * 0.01;
-          p.vy += dy * 0.01;
-          p.vx *= 0.95; // damping
-          p.vy *= 0.95;
-          p.x += p.vx;
-          p.y += p.vy;
+        if (state === 'disappear') {
+          p.alpha = Math.max(0, p.alpha - 0.016); // fade out over 1 second
+        } else {
+          const dx = p.targetX - p.x;
+          const dy = p.targetY - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 1) {
+            p.vx += dx * 0.01;
+            p.vy += dy * 0.01;
+            p.vx *= 0.95; // damping
+            p.vy *= 0.95;
+            p.x += p.vx;
+            p.y += p.vy;
+          }
         }
         // Draw
-        ctx.fillStyle = 'rgba(255, 122, 162, 0.8)'; // rose color
+        ctx.fillStyle = `rgba(255, 122, 162, ${p.alpha})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fill();
