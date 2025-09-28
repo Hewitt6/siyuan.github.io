@@ -653,10 +653,11 @@
           particles[i].targetY = canvas.height / 2 - heartY(t);
         }
       } else {
-        // Scatter targets
+        // Scatter targets in a smaller area
+        const scatterRange = isMobile ? 40 : 80;
         for (let i = 0; i < numParticles; i++) {
-          particles[i].targetX = Math.random() * canvas.width;
-          particles[i].targetY = Math.random() * canvas.height;
+          particles[i].targetX = canvas.width / 2 + (Math.random() - 0.5) * scatterRange;
+          particles[i].targetY = canvas.height / 2 + (Math.random() - 0.5) * scatterRange;
         }
       }
     }
