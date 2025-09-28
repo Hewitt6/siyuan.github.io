@@ -103,9 +103,12 @@
       .controls { grid-template-columns: 1fr; gap: 10px; padding: 14px; }
       .controls .row:last-child .btn { width: 100%; justify-content: center; }
     }
+
+    #heartCanvas { position: fixed; top: 10px; right: 10px; pointer-events: none; z-index: 1000; }
   </style>
 </head>
 <body>
+  <canvas id="heartCanvas" width="200" height="200"></canvas>
   <div class="wrap">
     <div class="header">
       <div class="title">
@@ -607,6 +610,85 @@
     el.run.addEventListener('click', run);
     el.copy.addEventListener('click', copyOutput);
     el.dl.addEventListener('click', downloadOutput);
+
+    // Heart particle animation
+    const canvas = document.getElementById('heartCanvas');
+    const ctx = canvas.getContext('2d');
+    const particles = [];
+    const numParticles = 100;
+    let state = 'scatter'; // 'scatter' or 'gather'
+    let stateTimer = 0;
+    const stateDuration = 3000; // 3 seconds per state
+
+    // Heart shape function
+    function heartX(t) { return 16 * Math.pow(Math.sin(t), 3) * 3; }
+    function heartY(t) { return (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 3; }
+
+    // Initialize particles
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        targetX: Math.random() * canvas.width,
+        targetY: Math.random() * canvas.height,
+        vx: 0,
+        vy: 0
+      });
+    }
+
+    function updateTargets() {
+      if (state === 'gather') {
+        // Assign targets to heart shape
+        for (let i = 0; i < numParticles; i++) {
+          const t = (i / numParticles) * 2 * Math.PI;
+          particles[i].targetX = canvas.width / 2 + heartX(t);
+          particles[i].targetY = canvas.height / 2 - heartY(t);
+        }
+      } else {
+        // Scatter targets
+        for (let i = 0; i < numParticles; i++) {
+          particles[i].targetX = Math.random() * canvas.width;
+          particles[i].targetY = Math.random() * canvas.height;
+        }
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update state
+      stateTimer += 16; // ~60fps
+      if (stateTimer > stateDuration) {
+        state = state === 'scatter' ? 'gather' : 'scatter';
+        stateTimer = 0;
+        updateTargets();
+      }
+
+      // Update particles
+      particles.forEach(p => {
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1) {
+          p.vx += dx * 0.01;
+          p.vy += dy * 0.01;
+          p.vx *= 0.95; // damping
+          p.vy *= 0.95;
+          p.x += p.vx;
+          p.y += p.vy;
+        }
+        // Draw
+        ctx.fillStyle = 'rgba(255, 122, 162, 0.8)'; // rose color
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    updateTargets();
+    animate();
   </script>
 </body>
 </html>
