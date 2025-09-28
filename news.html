@@ -105,6 +105,9 @@
     }
 
     #heartCanvas { position: fixed; top: 10px; right: 10px; pointer-events: none; z-index: 1000; }
+    @media (max-width: 720px) {
+      #heartCanvas { width: 100px; height: 100px; }
+    }
   </style>
 </head>
 <body>
@@ -614,15 +617,20 @@
     // Heart particle animation
     const canvas = document.getElementById('heartCanvas');
     const ctx = canvas.getContext('2d');
+    const isMobile = window.innerWidth < 720;
+    const canvasSize = isMobile ? 100 : 200;
+    const numParticles = isMobile ? 50 : 100;
+    const scale = isMobile ? 1.5 : 3;
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
     const particles = [];
-    const numParticles = 100;
     let state = 'scatter'; // 'scatter' or 'gather'
     let stateTimer = 0;
     const stateDuration = 3000; // 3 seconds per state
 
     // Heart shape function
-    function heartX(t) { return 16 * Math.pow(Math.sin(t), 3) * 3; }
-    function heartY(t) { return (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 3; }
+    function heartX(t) { return 16 * Math.pow(Math.sin(t), 3) * scale; }
+    function heartY(t) { return (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale; }
 
     // Initialize particles
     for (let i = 0; i < numParticles; i++) {
