@@ -104,7 +104,7 @@
       .controls .row:last-child .btn { width: 100%; justify-content: center; }
     }
 
-    #heartCanvas { position: fixed; top: 10px; right: 10px; pointer-events: none; z-index: 1000; }
+    #heartCanvas { position: fixed; top: 5px; right: 10px; pointer-events: none; z-index: 1000; }
     @media (max-width: 720px) {
       #heartCanvas { width: 100px; height: 100px; }
     }
@@ -619,7 +619,7 @@
     const ctx = canvas.getContext('2d');
     const isMobile = window.innerWidth < 720;
     const canvasSize = isMobile ? 100 : 200;
-    const numParticles = isMobile ? 50 : 100;
+    const numParticles = 100;
     const scale = isMobile ? 1.5 : 3;
     canvas.width = canvasSize;
     canvas.height = canvasSize;
