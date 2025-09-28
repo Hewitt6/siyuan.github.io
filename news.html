@@ -307,7 +307,11 @@
       const finalUrl = buildProxiedUrl(pageUrl);
       let html;
       try {
-        const resp = await fetch(finalUrl, { method: 'GET' });
+        // 加超时 & abort，避免长时间卡住
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000); // 8s 超时
+        const resp = await fetch(finalUrl, { method: 'GET', signal: controller.signal });
+        clearTimeout(timer);
         if (!resp.ok) throw new Error('Jin10 页面获取失败: ' + resp.status);
         html = await resp.text();
       } catch (e) {
@@ -316,14 +320,21 @@
           el.fetchHint.textContent = '直接抓取金十失败，尝试公共代理…';
           try {
             const fallback = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(pageUrl) + '&cache=false';
-            const r2 = await fetch(fallback);
+            const controller2 = new AbortController();
+            const timer2 = setTimeout(() => controller2.abort(), 10000); // 6s fallback 超时
+            const r2 = await fetch(fallback, { signal: controller2.signal });
+            clearTimeout(timer2);
             if (!r2.ok) throw new Error('AllOrigins 失败: ' + r2.status);
             html = await r2.text();
           } catch (inner) {
-            throw new Error('金十抓取失败（可能被 CORS 限制）。请在“代理地址”输入你的 Cloudflare Workers / 反向代理，例如 https://your-worker.workers.dev/?url= 或 https://api.allorigins.win/raw?url=' );
+            console.warn('[Jin10] 两次抓取失败/超时：', inner);
+            el.fetchHint.textContent = (el.fetchHint.textContent || '') + ' · 金十失败(已跳过)';
+            return { raw: { error: 'timeout_or_blocked' }, items: [] }; // 不抛出，保证流程继续
           }
         } else {
-          throw e;
+          console.warn('[Jin10] 使用自定义代理失败/超时：', e);
+          el.fetchHint.textContent = (el.fetchHint.textContent || '') + ' · 金十失败(跳过)';
+          return { raw: { error: 'proxy_failed' }, items: [] };
         }
       }
       const parser = new DOMParser();
