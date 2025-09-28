@@ -652,7 +652,7 @@
           const t = (i / numParticles) * 2 * Math.PI;
           particles[i].targetX = canvas.width / 2 + heartX(t);
           particles[i].targetY = canvas.height / 2 - heartY(t);
-          particles[i].alpha = 1; // reset alpha
+          particles[i].alpha = 0; // start fade in
         }
       } else if (state === 'scatter') {
         // Scatter targets in a smaller area
@@ -661,6 +661,9 @@
           particles[i].targetX = canvas.width / 2 + (Math.random() - 0.5) * scatterRange;
           particles[i].targetY = canvas.height / 2 + (Math.random() - 0.5) * scatterRange;
         }
+      } else if (state === 'disappear') {
+        // Instantly disappear
+        particles.forEach(p => p.alpha = 0);
       }
     }
 
@@ -680,7 +683,20 @@
       // Update particles
       particles.forEach(p => {
         if (state === 'disappear') {
-          p.alpha = Math.max(0, p.alpha - 0.016); // fade out over 1 second
+          // already set alpha=0 in updateTargets
+        } else if (state === 'gather') {
+          p.alpha = Math.min(1, p.alpha + 0.016); // fade in slowly
+          const dx = p.targetX - p.x;
+          const dy = p.targetY - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 1) {
+            p.vx += dx * 0.01;
+            p.vy += dy * 0.01;
+            p.vx *= 0.95; // damping
+            p.vy *= 0.95;
+            p.x += p.vx;
+            p.y += p.vy;
+          }
         } else {
           const dx = p.targetX - p.x;
           const dy = p.targetY - p.y;
@@ -694,12 +710,6 @@
             p.y += p.vy;
           }
         }
-        // Draw
-        ctx.fillStyle = `rgba(255, 122, 162, ${p.alpha})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-        ctx.fill();
-      });
 
       requestAnimationFrame(animate);
     }
