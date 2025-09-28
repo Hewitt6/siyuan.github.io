@@ -599,28 +599,18 @@
     }
 
     function copyOutput() {
-      // For copy we need plain text (not token markup); reconstruct by joining tokens or fallback to textContent
-      let txt = '';
-      if (el.output.querySelector('.tok')) {
-        txt = Array.from(el.output.querySelectorAll('.tok')).map(n => n.textContent || '').join('');
-      } else {
-        txt = el.output.textContent || '';
-      }
-      if (!txt.trim()) return;
-      navigator.clipboard.writeText(txt).then(() => {
+  // 直接用整体 textContent，避免只复制被包装的风险 token 导致缺失正文
+  const txt = (el.output.textContent || '').trim();
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => {
         el.copy.textContent = '已复制 ✓';
         setTimeout(()=> el.copy.textContent = '复制摘要', 1200);
       });
     }
     function downloadOutput() {
-      let txt = '';
-      if (el.output.querySelector('.tok')) {
-        txt = Array.from(el.output.querySelectorAll('.tok')).map(n => n.textContent || '').join('');
-      } else {
-        txt = el.output.textContent || '';
-      }
-      if (!txt.trim()) return;
-      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const txt = (el.output.textContent || '').trim();
+  if (!txt) return;
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `要闻简报_${Date.now()}.txt`;
